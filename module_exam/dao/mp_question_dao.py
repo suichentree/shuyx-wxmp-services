@@ -24,7 +24,7 @@ class MpQuestionDao(BaseDao[MpQuestionModel]):
         result = db_session.query(
             MpQuestionModel,
             MpOptionModel
-        ).join(
+        ).outerjoin(
             MpOptionModel,
             (MpQuestionModel.id == MpOptionModel.question_id) & (MpOptionModel.status == 0)
         ).filter(

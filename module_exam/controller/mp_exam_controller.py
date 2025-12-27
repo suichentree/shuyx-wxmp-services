@@ -54,6 +54,7 @@ def getQuestionList(exam_id:int = Body(None,embed=True),db_session: Session = De
 
     # 调用自定义方法获取问题和选项数据
     result = MpQuestionService_instance.get_questions_with_options(db_session, exam_id)
+    print(result)
     return ResponseUtil.success(data=result if result is not None else [])
 
 
