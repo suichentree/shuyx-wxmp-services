@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 # 定义用户模型类型
@@ -15,5 +15,7 @@ class MpUserOptionDTO(BaseModel):
     is_duoxue:Optional[int] = None
     is_right:Optional[int] = None
     create_time:Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 

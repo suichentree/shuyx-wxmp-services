@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 # 定义用户模型类型
@@ -14,4 +14,5 @@ class MpUserExamDTO(BaseModel):
     create_time:Optional[datetime] = None
     finish_time:Optional[datetime] = None
 
+    model_config = ConfigDict(from_attributes=True)
 

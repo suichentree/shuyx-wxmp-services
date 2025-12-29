@@ -1,7 +1,10 @@
 from typing import List
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from module_exam.dto.mp_option_dto import MpOptionDTO
+from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO
 from module_exam.model.mp_option_model import MpOptionModel
 from module_exam.model.mp_question_model import MpQuestionModel
 from module_exam.dao.base_dao import BaseDao

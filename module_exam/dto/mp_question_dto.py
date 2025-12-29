@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 from module_exam.dto.mp_option_dto import MpOptionDTO
@@ -16,17 +16,16 @@ class MpQuestionDTO(BaseModel):
     status:Optional[int] = None
     create_time:Optional[datetime] = None
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 # 定义问题-选项模型类型
 class MpQuestionOptionDTO(BaseModel):
-    id: Optional[int] = None  # Optional[int] = None 表示类型可以是int,也可以是 None，默认值为 None
-    exam_id: Optional[int] = None
-    name: Optional[str] = None
-    type: Optional[int] = None
-    type_name: Optional[str] = None
-    status: Optional[int] = None
-    create_time: Optional[datetime] = None
-    options: Optional[List[MpOptionDTO]] = []  # 添加选项列表字段
+    question: MpQuestionDTO
+    options: List[MpOptionDTO] = []  # 一个问题对应多个选项，默认空列表
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 
