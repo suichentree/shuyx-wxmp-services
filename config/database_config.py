@@ -1,7 +1,6 @@
 # 导入sqlalchemy框架中的各个工具
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 # mysql数据库的连接URL
 MYSQL_DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/shuyx_db"
@@ -17,15 +16,16 @@ myEngine = create_engine(MYSQL_DATABASE_URL,
 mySessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=myEngine, expire_on_commit=False)
 
 # 创建统一数据库模型基类
-myBase = declarative_base()
+class myBase(DeclarativeBase):
+    pass
 
 # 该函数每次通过会话工厂创建新的会话session对象。确保每个请求都有独立的会话。从而避免了并发访问同一个会话对象导致的事务冲突
 def get_db_session():
-    mysession = mySessionLocal()  #每次通过会话工厂创建新的会话session对象
+    db_session = mySessionLocal()  #每次通过会话工厂创建新的会话session对象
     try:
-        yield mysession
+        yield db_session
     except:
-        mysession.rollback()
+        db_session.rollback()
         raise
     finally:
-        mysession.close()
+        db_session.close()

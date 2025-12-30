@@ -128,6 +128,7 @@ class BaseDao(Generic[ModelType]):
         db_session.add(new_instance)
         # 显式提交事务
         db_session.commit()
+        # 刷新实例，获取自增id,默认值等
         db_session.refresh(new_instance)
         return new_instance
 

@@ -1,5 +1,9 @@
 # 导入sqlalchemy框架中的相关字段
+from datetime import datetime
+
 from sqlalchemy import Column, Integer, String, DateTime, CHAR, func, Index
+from sqlalchemy.orm import Mapped, MappedColumn
+
 # 导入公共基类
 from config.database_config import myBase
 
@@ -9,15 +13,15 @@ class MpUserOptionModel(myBase):
     """
     __tablename__ = 'mp_user_option'
 
-    id = Column("id",Integer, primary_key=True, autoincrement=True, comment='用户选项id')
-    user_id = Column("user_id", Integer, nullable=False, comment='用户id')
-    exam_id = Column("exam_id", Integer, nullable=False, comment='测试id')
-    user_exam_id = Column("user_exam_id", Integer, nullable=False, comment='用户测试id')
-    option_id = Column("option_id", Integer, nullable=False, comment='选项id')
-    question_id = Column("question_id", Integer, nullable=False, comment='问题id')
-    is_duoxue = Column("is_duoxue", Integer, nullable=False, comment='是否多选,0为否，1为是')
-    is_right = Column("is_right", Integer, nullable=False, comment='是否正确,0为否，1为是')
-    create_time = Column("create_time",DateTime, comment='创建时间', default=func.now())
+    id: Mapped[int] = MappedColumn(Integer, primary_key=True, autoincrement=True, comment='用户选项id')
+    user_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户id')
+    exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='测试id')
+    user_exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户测试id')
+    option_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='选项id')
+    question_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='问题id')
+    is_duoxue: Mapped[int] = MappedColumn(Integer, nullable=False, comment='是否多选,0为否，1为是')
+    is_right: Mapped[int] = MappedColumn(Integer, nullable=False, comment='是否正确,0为否，1为是')
+    create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now())
 
     # 添加索引
     __table_args__ = (
