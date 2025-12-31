@@ -1,7 +1,7 @@
 from typing import List
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from module_exam.dto.mp_option_dto import MpOptionDTO
 from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO

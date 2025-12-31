@@ -1,6 +1,6 @@
 from typing import Generic, TypeVar, Type, List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import update, delete, desc, asc
+from sqlalchemy import update, delete, desc, asc, select, insert
 from config.database_config import myBase
 
 # 定义泛型类型变量，约束为SQLAlchemy的Base模型
@@ -20,37 +20,48 @@ class BaseDao(Generic[ModelType]):
         根据ID获取单条记录（注意包含字段id）
             id: 记录ID
         """
-        return db_session.query(self.model).filter(self.model.id == id).first()
+        # 构建sqlalchemy查询语句
+        sql = select(self.model).where(self.model.id == id)
+        # 执行查询语句并返回查询结果对象
+        result = db_session.execute(sql)
+        # 从查询结果对象中获取单条记录（如果存在）
+        return result.scalar_one_or_none()
 
     def get_total_by_filters(self,db_session: Session,filters: Dict = None) -> int:
         """
         根据条件获取记录总数
             filters: 查询条件,字典类型。例如 {"filed1": value1, "filed2": value2}
         """
-        # 初始化查询对象
-        query = db_session.query(self.model)
+        # 构建查询语句，选择模型的所有字段
+        sql = select(self.model)
         # 动态构建查询条件
         if filters:
             for field, value in filters.items():
                 if hasattr(self.model, field) and value is not None:
-                    query = query.filter(getattr(self.model, field) == value)
+                    sql = sql.where(getattr(self.model, field) == value)
 
-        return query.count()
+        # 执行查询语句并返回查询结果对象
+        result = db_session.execute(sql)
+        # 从查询结果对象中获取记录总数
+        return len(result.scalars().all())
 
     def get_one_by_filter(self, db_session: Session, filters: Dict = None) -> Optional[ModelType]:
         """
         根据条件获取单条记录
             filters: 查询条件，字典类型。例如 {"filed1": value1, "filed2": value2}
         """
-        # 初始化查询对象
-        query = db_session.query(self.model)
+        # 初始化查询对象，选择模型的所有字段
+        sql = select(self.model)
         # 动态构建查询条件
         if filters:
             for field, value in filters.items():
                 if hasattr(self.model, field) and value is not None:
-                    query = query.filter(getattr(self.model, field) == value)
+                    sql = sql.where(getattr(self.model, field) == value)
 
-        return query.first()
+        # 执行查询语句并返回查询结果对象
+        result = db_session.execute(sql)
+        # 从查询结果对象中获取单条记录（如果存在）
+        return result.scalar_one_or_none()
 
     def get_list_by_filters(self,db_session: Session,filters: Dict = None,sort_by: List[str] = None) -> List[ModelType]:
         """
@@ -58,13 +69,14 @@ class BaseDao(Generic[ModelType]):
             filters: 查询条件字典。例如 {"filed1": value1, "filed2": value2}
             sort_by: 排序字段，是一个字符串列表。例如 ["field1", "-field2"] 表示按field1升序，按field2降序排序。
         """
-        # 初始化查询对象
-        query = db_session.query(self.model)
+
+        # 初始化查询对象，选择模型的所有字段
+        sql = select(self.model)
         # 动态构建查询条件
         if filters:
             for field, value in filters.items():
                 if hasattr(self.model, field) and value is not None:
-                    query = query.filter(getattr(self.model, field) == value)
+                    sql = sql.where(getattr(self.model, field) == value)
         # 动态构建排序条件
         if sort_by:
             # 遍历排序字段列表
@@ -74,14 +86,17 @@ class BaseDao(Generic[ModelType]):
                     # 降序
                     field_name = sort_field[1:]
                     if hasattr(self.model, field_name):
-                        query = query.order_by(desc(getattr(self.model, field_name)))
+                        sql = sql.order_by(desc(getattr(self.model, field_name)))
                 else:
                     # 升序
                     if hasattr(self.model, sort_field):
-                        query = query.order_by(asc(getattr(self.model, sort_field)))
+                        sql = sql.order_by(asc(getattr(self.model, sort_field)))
 
-        # 执行查询并获取所有记录
-        return query.all()
+        # 执行查询语句并返回查询结果对象
+        result = db_session.execute(sql)
+        # 从查询结果对象中获取所有记录
+        return result.scalars().all()
+
 
     def get_page_list_by_filters(self,db_session: Session,page_num: int,page_size: int,filters: Dict = None,sort_by: List[str] = None) -> List[ModelType]:
         """
@@ -91,13 +106,14 @@ class BaseDao(Generic[ModelType]):
             filters: 查询条件字典。例如 {"filed1": value1, "filed2": value2}
             sort_by: 排序字段，是一个字符串列表。例如 ["field1", "-field2"] 表示按field1升序，按field2降序排序。
         """
-        # 初始化查询对象
-        query = db_session.query(self.model)
+
+        # 初始化查询对象，选择模型的所有字段
+        sql = select(self.model)
         # 动态构建查询条件
         if filters:
             for field, value in filters.items():
                 if hasattr(self.model, field) and value is not None:
-                    query = query.filter(getattr(self.model, field) == value)
+                    sql = sql.where(getattr(self.model, field) == value)
         # 动态构建排序条件
         if sort_by:
             # 遍历排序字段列表
@@ -107,29 +123,39 @@ class BaseDao(Generic[ModelType]):
                     # 降序
                     field_name = sort_field[1:]
                     if hasattr(self.model, field_name):
-                        query = query.order_by(desc(getattr(self.model, field_name)))
+                        sql = sql.order_by(desc(getattr(self.model, field_name)))
                 else:
                     # 升序
                     if hasattr(self.model, sort_field):
-                        query = query.order_by(asc(getattr(self.model, sort_field)))
+                        sql = sql.order_by(asc(getattr(self.model, sort_field)))
 
         # 计算分页偏移量
         offset_value = (page_num - 1) * page_size
-        # 获取当前分页数据
-        return query.offset(offset_value).limit(page_size).all()
+        # 构建分页查询
+        sql = sql.offset(offset_value).limit(page_size)
+        # 执行查询语句并返回查询结果对象
+        result = db_session.execute(sql)
+        # 从查询结果对象中获取所有记录
+        return result.scalars().all()
+
 
     def add(self, db_session: Session, dict_data: Dict = None) -> ModelType:
         """
         添加新记录
             dict_data: 新记录的字典数据
         """
+
         # 将字典转换为对应的model实例
         new_instance = self.model(**dict_data)
-        db_session.add(new_instance)
+        # 构建sql语句
+        sql = insert(self.model).values(**dict_data)
+        # 执行sql语句
+        db_session.execute(sql)
         # 显式提交事务
         db_session.commit()
         # 刷新实例，获取自增id,默认值等
         db_session.refresh(new_instance)
+        # 返回新实例
         return new_instance
 
     def update_by_id(self,db_session: Session,id: int,update_data: Dict = None) -> bool:
@@ -145,14 +171,19 @@ class BaseDao(Generic[ModelType]):
         if not db_obj:
             return False
 
-        # 2. 遍历更新数据字典，更新model实例的字段
-        for key, value in update_data.items():
-            if hasattr(db_obj, key) and key != "id":  # 禁止更新id字段
-                setattr(db_obj, key, value)
-
-        # 3. 提交事务
+        # 2. 先过滤掉id字段，不允许更新
+        filtered_data = {k: v for k, v in update_data.items() if k != "id" and hasattr(self.model, k)}
+        # 3. 构建SQLAlchemy 2.x的update语句
+        stmt = update(self.model).where(self.model.id == id).values(**filtered_data)
+        # 4. 执行更新语句
+        result = db_session.execute(stmt)
+        # 5. 提交事务
         db_session.commit()
-        return True
+        # 6. 判断是否有记录被更新（受影响行数>0）
+        updated_ids = result.scalars().all()
+
+        # 若受影响行数>0，则返回True
+        return len(updated_ids) > 0
 
     def delete_by_id(self, db_session: Session, id: int) -> bool:
         """
@@ -165,8 +196,14 @@ class BaseDao(Generic[ModelType]):
         if not db_obj:
             return False
 
-        # 2. 删除记录
-        db_session.delete(db_obj)
+        # 2. 构建SQLAlchemy 2.x的delete语句
+        stmt = delete(self.model).where(self.model.id == id)
+        # 3. 执行删除语句
+        result = db_session.execute(stmt)
+        # 4. 提交事务
         db_session.commit()
-        return True
+        # 5. 判断是否有记录被删除（受影响行数>0）
+        deleted_ids = result.scalars().all()
+        # 若受影响行数>0，则返回True
+        return len(deleted_ids) > 0
 

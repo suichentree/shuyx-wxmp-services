@@ -9,7 +9,4 @@ class MpExamDao(BaseDao[MpExamModel]):
 
     # 除此之外，可以根据业务需求添加自定义方法
 
-    def get_by_user_name(self, db, user_name: str):
-        """个性化查询方法，根据用户名称查询"""
-        return self.get_by_filter(db, filters={"name": user_name})
 
