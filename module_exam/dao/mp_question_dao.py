@@ -36,3 +36,23 @@ class MpQuestionDao(BaseDao[MpQuestionModel]):
         ).all()
 
         return result
+
+    def get_questions_with_options222(self, db_session: Session, exam_id: int):
+        """
+        使用join查询获取指定exam_id的问题及其选项
+        :param db_session: 数据库会话
+        :param exam_id: 考试ID
+        :return: 包含问题和选项的字典列表
+        """
+        # 使用join查询获取问题和对应的选项
+        sql = select(MpQuestionModel,MpOptionModel).outerjoin(
+            MpOptionModel,
+            (MpQuestionModel.id == MpOptionModel.question_id) & (MpOptionModel.status == 0)
+        ).where(
+            MpQuestionModel.exam_id == exam_id,
+            MpQuestionModel.status == 0
+        )
+
+        result = db_session.execute(sql).all()
+
+        return result
