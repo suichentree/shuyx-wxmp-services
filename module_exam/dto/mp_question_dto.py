@@ -23,7 +23,7 @@ class MpQuestionDTO(BaseModel):
 # 定义问题-选项模型类型
 class MpQuestionOptionDTO(BaseModel):
     question: MpQuestionDTO
-    options: List[MpOptionDTO] = []  # 一个问题对应多个选项，默认空列表
+    options: Optional[List[MpOptionDTO]] = None  # 一个问题对应多个选项，默认空列表
 
     model_config = ConfigDict(from_attributes=True)
 
