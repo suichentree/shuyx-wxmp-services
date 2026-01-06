@@ -30,13 +30,14 @@ class BaseService(Generic[ModelType]):
         """
         return self.dao.get_total_by_filters(db_session, filters)
 
-    def get_one_by_filter(self, db_session: Session, filters: Dict = None,sort_by: List[str] = None) -> Optional[ModelType]:
+    def get_one_by_filters(self, db_session: Session, filters: Dict = None,sort_by: List[str] = None) -> Optional[ModelType]:
         """
         根据条件获取单条记录
             filters: 查询条件，字典类型。例如 {"filed1": value1, "filed2": value2}
             sort_by: 排序字段，是一个字符串列表。例如 ["field1", "-field2"] 表示按field1升序，按field2降序排序
         """
-        return self.dao.get_one_by_filter(db_session, filters, sort_by)
+
+        return self.dao.get_one_by_filters(db_session, filters, sort_by)
 
     def get_list_by_filters(self,db_session: Session,filters: Dict = None,sort_by: List[str] = None) -> List[ModelType]:
         """

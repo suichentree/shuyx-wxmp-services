@@ -22,8 +22,8 @@ class MpUserExamService(BaseService[MpUserExamModel]):
         查询用户最近的未完成的测试记录
         """
 
-        # 根据user_id, exam_id, finish_time 字段 查询最近的未完成记录,id降序
-        last_not_finished_user_exam = self.dao_instance.get_one_by_filter(db_session, {"user_id": user_id,"exam_id": exam_id,"finish_time": False}, {"-id"})
+        # 根据user_id, exam_id, finish_time 字段 查询最近的未完成记录,按照id降序
+        last_not_finished_user_exam = self.dao_instance.get_one_by_filter(db_session, {"user_id": user_id,"exam_id": exam_id,"finish_time": False}, ["-id"])
         return last_not_finished_user_exam
 
 
@@ -31,6 +31,6 @@ class MpUserExamService(BaseService[MpUserExamModel]):
         """
         查询用户最近的已完成的测试记录
         """
-        # 根据user_id, exam_id, finish_time 字段 查询最近的已完成记录,id降序
-        last_finished_user_exam = self.dao_instance.get_one_by_filter(db_session, {"user_id": user_id, "exam_id": exam_id, "finish_time": True}, {"-id"})
+        # 根据user_id, exam_id, finish_time 字段 查询最近的已完成记录,按照id降序
+        last_finished_user_exam = self.dao_instance.get_one_by_filter(db_session, {"user_id": user_id, "exam_id": exam_id, "finish_time": True}, ["-id"])
         return last_finished_user_exam

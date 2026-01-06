@@ -16,12 +16,4 @@ class MpExamService(BaseService[MpExamModel]):
 
     # 可以根据业务需求添加自定义方法
 
-    def get_all_exam_id(self) -> List[int]:
-        """
-        查询所有考试的id，返回一个包含所有考试id的列表
-        """
-        examlist  = self.get_by_filter(filters=None)
-        examids:List[int] = []
-        for exam in examlist:
-            examids.append(exam.id)
-        return examids
+

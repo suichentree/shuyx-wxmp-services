@@ -31,7 +31,7 @@ async def getOpenIdByWxCode(code:str = Body(None,embed=True)):
     """
     logger.info(f"/mp/wxservice/getOpenIdByWxCode , code = {code}")
     if not code:
-        return ResponseUtil.error(msg="微信小程序登录凭证（code）不能为空")
+        return ResponseUtil.error(message="微信小程序登录凭证（code）不能为空")
 
     # 获取openid
     response_info = get_wx_openid_by_code(code)

@@ -12,8 +12,8 @@ class MpUserExamDTO(BaseModel):
     exam_id:Optional[int] = None
     page_no:Optional[int] = None
     score:Optional[int] = None
-    create_time:Optional[datetime] = None
-    finish_time:Optional[datetime] = None
+    create_time:Optional[datetime|bool] = None
+    finish_time:Optional[datetime|bool] = None
 
     model_config = ConfigDict(from_attributes=True)
 

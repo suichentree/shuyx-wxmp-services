@@ -1,3 +1,5 @@
+from typing import List
+
 from module_exam.dao.mp_question_dao import MpQuestionDao
 from module_exam.dto.mp_option_dto import MpOptionDTO
 from module_exam.dto.mp_question_dto import MpQuestionDTO, MpQuestionOptionDTO
@@ -16,7 +18,7 @@ class MpQuestionService(BaseService[MpQuestionModel]):
 
     # 可以根据业务需求添加自定义方法
 
-    def get_questions_with_options(self, db_session, exam_id: int):
+    def get_questions_with_options(self, db_session, exam_id: int) -> List[MpQuestionOptionDTO]:
         """
         根据考试ID获取问题和对应的选项
         :param exam_id: 考试ID

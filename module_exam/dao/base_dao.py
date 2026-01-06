@@ -45,7 +45,7 @@ class BaseDao(Generic[ModelType]):
                         else:
                             # False，表示该查询字段为空值
                             sql = sql.where(getattr(self.model, field) == None)
-                    else:
+                    elif value is not None:
                         # 设置查询条件为该字段为value
                         sql = sql.where(getattr(self.model, field) == value)
 
@@ -54,7 +54,7 @@ class BaseDao(Generic[ModelType]):
         # 从查询结果对象中获取记录总数
         return len(result.scalars().all())
 
-    def get_one_by_filter(self, db_session: Session, filters: Dict = None,sort_by: List[str] = None) -> Optional[ModelType]:
+    def get_one_by_filters(self, db_session: Session, filters: Dict = None,sort_by: List[str] = None) -> Optional[ModelType]:
         """
         根据条件获取单条记录
             filters: 查询条件，字典类型。例如 {"filed1": value1, "filed2": value2}
@@ -73,7 +73,7 @@ class BaseDao(Generic[ModelType]):
                         else:
                             # False，表示该查询字段为空值
                             sql = sql.where(getattr(self.model, field) == None)
-                    else:
+                    elif value is not None:
                         # 设置查询条件为该字段为value
                         sql = sql.where(getattr(self.model, field) == value)
 
@@ -118,7 +118,7 @@ class BaseDao(Generic[ModelType]):
                         else:
                             # False，表示该查询字段为空值
                             sql = sql.where(getattr(self.model, field) == None)
-                    else:
+                    elif value is not None:
                         # 设置查询条件为该字段为value
                         sql = sql.where(getattr(self.model, field) == value)
         # 动态构建排序条件
@@ -164,7 +164,7 @@ class BaseDao(Generic[ModelType]):
                         else:
                             # False，表示该查询字段为空值
                             sql = sql.where(getattr(self.model, field) == None)
-                    else:
+                    elif value is not None:
                         # 设置查询条件为该字段为value
                         sql = sql.where(getattr(self.model, field) == value)
 
