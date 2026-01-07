@@ -11,7 +11,7 @@ class MpExamDTO(BaseModel):
 
     id:Optional[int] = None          # Optional[int] = None 表示类型可以是int,也可以是 None，默认值为 None
     name:Optional[str] = None
-    type:Optional[str] = None
+    tag:Optional[str] = None
     status:Optional[int] = None
     create_time:Optional[datetime] = None
 
@@ -22,7 +22,7 @@ class MpExamCommonDTO(BaseModel):
 
     id: Optional[int] = None
     name: Optional[str] = None
-    type: Optional[str] = None
+    tag: Optional[str] = None
     status: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -15,7 +15,7 @@ class MpExamModel(myBase):
 
     id: Mapped[int] = MappedColumn(Integer, primary_key=True, autoincrement=True, comment='测试id')
     name: Mapped[str] = MappedColumn(String(50), unique=True, nullable=False, comment='测试名称')
-    type: Mapped[str] = MappedColumn(String(20), unique=True, nullable=False, comment='测试类型')
+    tag: Mapped[str] = MappedColumn(String(20), unique=True, nullable=False, comment='测试标签')
     status: Mapped[int] = MappedColumn(Integer, default=0, comment='测试状态 0正常 -1停用')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now()) # 默认为当前时间
 

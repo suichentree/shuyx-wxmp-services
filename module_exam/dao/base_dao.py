@@ -1,6 +1,7 @@
 from typing import Generic, TypeVar, Type, List, Optional, Dict, Any
+
+from sqlalchemy import asc, delete, desc, func, select, update
 from sqlalchemy.orm import Session
-from sqlalchemy import update, delete, desc, asc, select, insert
 from config.database_config import myBase
 
 # 定义泛型类型变量，约束为SQLAlchemy的Base模型
@@ -32,8 +33,8 @@ class BaseDao(Generic[ModelType]):
         根据条件获取记录总数
             filters: 查询条件,字典类型。例如 {"filed1": value1, "filed2": value2}
         """
-        # 构建查询语句，选择模型的所有字段
-        sql = select(self.model)
+        # 构建 count(*) 查询，避免全量加载导致的性能问题
+        sql = select(func.count()).select_from(self.model)
         # 动态构建查询条件 and 查询，支持查询空值，非空值查询
         if filters:
             for field, value in filters.items():
@@ -41,18 +42,18 @@ class BaseDao(Generic[ModelType]):
                     if isinstance(value, bool):
                         if value:
                             # True，表示该查询字段为非空值
-                            sql = sql.where(getattr(self.model, field) != None)
+                            sql = sql.where(getattr(self.model, field).is_not(None))
                         else:
                             # False，表示该查询字段为空值
-                            sql = sql.where(getattr(self.model, field) == None)
+                            sql = sql.where(getattr(self.model, field).is_(None))
                     elif value is not None:
                         # 设置查询条件为该字段为value
                         sql = sql.where(getattr(self.model, field) == value)
 
         # 执行查询语句并返回查询结果对象
         result = db_session.execute(sql)
-        # 从查询结果对象中获取记录总数
-        return len(result.scalars().all())
+        # 返回记录总数
+        return int(result.scalar_one())
 
     def get_one_by_filters(self, db_session: Session, filters: Dict = None,sort_by: List[str] = None) -> Optional[ModelType]:
         """
@@ -69,10 +70,10 @@ class BaseDao(Generic[ModelType]):
                     if isinstance(value, bool):
                         if value:
                             # True，表示该查询字段为非空值
-                            sql = sql.where(getattr(self.model, field) != None)
+                            sql = sql.where(getattr(self.model, field).is_not(None))
                         else:
                             # False，表示该查询字段为空值
-                            sql = sql.where(getattr(self.model, field) == None)
+                            sql = sql.where(getattr(self.model, field).is_(None))
                     elif value is not None:
                         # 设置查询条件为该字段为value
                         sql = sql.where(getattr(self.model, field) == value)
@@ -114,10 +115,10 @@ class BaseDao(Generic[ModelType]):
                     if isinstance(value, bool):
                         if value:
                             # True，表示该查询字段为非空值
-                            sql = sql.where(getattr(self.model, field) != None)
+                            sql = sql.where(getattr(self.model, field).is_not(None))
                         else:
                             # False，表示该查询字段为空值
-                            sql = sql.where(getattr(self.model, field) == None)
+                            sql = sql.where(getattr(self.model, field).is_(None))
                     elif value is not None:
                         # 设置查询条件为该字段为value
                         sql = sql.where(getattr(self.model, field) == value)
@@ -160,10 +161,10 @@ class BaseDao(Generic[ModelType]):
                     if isinstance(value, bool):
                         if value:
                             # True，表示该查询字段为非空值
-                            sql = sql.where(getattr(self.model, field) != None)
+                            sql = sql.where(getattr(self.model, field).is_not(None))
                         else:
                             # False，表示该查询字段为空值
-                            sql = sql.where(getattr(self.model, field) == None)
+                            sql = sql.where(getattr(self.model, field).is_(None))
                     elif value is not None:
                         # 设置查询条件为该字段为value
                         sql = sql.where(getattr(self.model, field) == value)
@@ -198,18 +199,12 @@ class BaseDao(Generic[ModelType]):
         添加新记录
             dict_data: 新记录的字典数据
         """
-
-        # 将字典转换为对应的model实例
-        new_instance = self.model(**dict_data)
-        # 构建sql语句
-        sql = insert(self.model).values(**dict_data)
-        # 执行sql语句
-        db_session.execute(sql)
-        # 显式提交事务
+        # 使用 ORM add，确保实例被 Session 管理，commit 后可 refresh 拿到自增 id
+        new_instance = self.model(**(dict_data or {}))
+        db_session.add(new_instance)
         db_session.commit()
-        # 刷新实例，获取自增id,默认值等
+        # 刷新实例，确保获取到自增 id
         db_session.refresh(new_instance)
-        # 返回新实例
         return new_instance
 
     def update_by_id(self,db_session: Session,id: int,update_data: Dict = None) -> bool:
@@ -233,11 +228,8 @@ class BaseDao(Generic[ModelType]):
         result = db_session.execute(stmt)
         # 5. 提交事务
         db_session.commit()
-        # 6. 判断是否有记录被更新（受影响行数>0）
-        updated_ids = result.scalars().all()
-
-        # 若受影响行数>0，则返回True
-        return len(updated_ids) > 0
+        # 判断是否有记录被更新（受影响行数>0）
+        return (result.rowcount or 0) > 0
 
     def delete_by_id(self, db_session: Session, id: int) -> bool:
         """
@@ -256,8 +248,6 @@ class BaseDao(Generic[ModelType]):
         result = db_session.execute(stmt)
         # 4. 提交事务
         db_session.commit()
-        # 5. 判断是否有记录被删除（受影响行数>0）
-        deleted_ids = result.scalars().all()
-        # 若受影响行数>0，则返回True
-        return len(deleted_ids) > 0
+        # 判断是否有记录被删除（受影响行数>0）
+        return (result.rowcount or 0) > 0
 

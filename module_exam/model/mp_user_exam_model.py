@@ -16,6 +16,7 @@ class MpUserExamModel(myBase):
     id: Mapped[int] = MappedColumn(Integer, primary_key=True, autoincrement=True, comment='用户测试id')
     user_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户id')
     exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='测试id')
+    type: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户测试类型  0是顺序练习，1是模拟考试')
     page_no: Mapped[int] = MappedColumn(Integer, nullable=False, comment='当前页码')
     score: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户测试分数')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now())

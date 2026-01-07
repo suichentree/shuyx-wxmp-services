@@ -10,6 +10,7 @@ class MpUserExamDTO(BaseModel):
     id:Optional[int] = None          # Optional[int] = None 表示类型可以是int,也可以是 None，默认值为 None
     user_id:Optional[int] = None
     exam_id:Optional[int] = None
+    type:Optional[int] = None           # 用户测试类型  0是顺序练习，1是模拟考试
     page_no:Optional[int] = None
     score:Optional[int] = None
     create_time:Optional[datetime|bool] = None

@@ -57,25 +57,25 @@ class BaseService(Generic[ModelType]):
         """
         return self.dao.get_page_list_by_filters(db_session, page_num, page_size, filters, sort_by)
 
-    def add(self, db_session: Session, dict_data: Dict = None) -> ModelType:
+    def add(self, db_session: Session, dict_data: Dict = None, commit: bool = True) -> ModelType:
         """
         添加新记录
             dict_data: 新记录的字典数据
         """
-        return self.dao.add(db_session, dict_data)
+        return self.dao.add(db_session, dict_data, commit=commit)
 
-    def update_by_id(self,db_session: Session,id: int,update_data: Dict = None) -> bool:
+    def update_by_id(self,db_session: Session,id: int,update_data: Dict = None, commit: bool = True) -> bool:
         """
         根据ID更新信息
             id: 要更新的记录ID
             update_data: 更新数据字典
         """
-        return self.dao.update_by_id(db_session, id, update_data)
+        return self.dao.update_by_id(db_session, id, update_data, commit=commit)
 
-    def delete_by_id(self, db_session: Session, id: int) -> bool:
+    def delete_by_id(self, db_session: Session, id: int, commit: bool = True) -> bool:
         """
         根据ID删除记录
             id: 要删除的记录ID
         """
-        return self.dao.delete_by_id(db_session, id)
+        return self.dao.delete_by_id(db_session, id, commit=commit)
 

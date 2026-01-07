@@ -3,6 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
+# 导入全局异常处理器
+from config.exception_handlers import register_exception_handlers
+
 # 创建FastAPI应用实例
 app = FastAPI(
     title="微信小程序服务API",
@@ -10,13 +13,18 @@ app = FastAPI(
     version="1.0.1"
 )
 
-# 全局异常处理中间件
-# app.middleware("http")(ExceptionMiddleware)
+# 注册全局异常处理器（推荐使用，替代旧的 ExceptionMiddleware）
+register_exception_handlers(app)
+
+# 可选中间件（按需启用）
 # 认证中间件
+# from middlewares.auth_middleware import AuthMiddleware
 # app.middleware("http")(AuthMiddleware)
 # 日志中间件
+# from middlewares.logger_middleware import LoggerMiddleware
 # app.middleware("http")(LoggerMiddleware)
 # 添加 GZip 中间件，压缩大于 2000 字节的响应
+# from fastapi.middleware.gzip import GZipMiddleware
 # app.add_middleware(GZipMiddleware, minimum_size=2000)
 
 # 注册CORS中间件

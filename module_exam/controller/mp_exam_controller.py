@@ -18,7 +18,7 @@ from module_exam.service.mp_option_service import MpOptionService
 from module_exam.service.mp_question_service import MpQuestionService
 from module_exam.service.mp_user_exam_service import MpUserExamService
 from module_exam.service.mp_user_option_service import MpUserOptionService
-from utils.response_util import ResponseUtil, model_to_dto
+from utils.response_util import ResponseUtil, model_to_dto, ResponseDTO, ResponseDTOBase
 
 # 创建路由实例
 router = APIRouter(prefix='/mp/exam', tags=['mp_exam接口'])
@@ -32,31 +32,29 @@ MpUserOptionService_instance = MpUserOptionService()
 """
 获取测试列表信息
 """
-@router.get("/getExamList")
+@router.get("/getExamList", response_model=ResponseDTO[List[MpExamDTO]])
 def getExamList(page_num:int=1, page_size:int=10,db_session: Session = Depends(get_db_session)):
     logger.info(f'/mp/exam/getExamList, page_num = {page_num}, page_size = {page_size}')
 
     # 构建dto对象，分页查询，状态正常的考试信息
     result:List[MpExamModel] = MpExamService_instance.get_page_list_by_filters(db_session, page_num=page_num, page_size=page_size, filters=MpExamDTO(status=0).model_dump())
-    # 将查询结果转换为指定dto类型
-    dto_result = model_to_dto(data=result, dto_cls=MpExamDTO)
+    # ✅ 不需要手动转换，FastAPI 自动根据 response_model 转换
     # 返回结果
-    return ResponseUtil.success(code=200, message="success", data=dto_result)
+    return ResponseUtil.success(code=200, message="success", data=result)
 
 
 """
 获取测试题目列表信息
 """
-@router.post("/getQuestionList")
+@router.post("/getQuestionList", response_model=ResponseDTO[List[MpQuestionOptionDTO]])
 def getQuestionList(exam_id:int = Body(None,embed=True),db_session: Session = Depends(get_db_session)):
     logger.info(f'/mp/exam/getQuestionList, exam_id = {exam_id}')
     # 调用自定义方法获取问题和选项数据
     result:List[MpQuestionOptionDTO] = MpQuestionService_instance.get_questions_with_options(db_session, exam_id)
     print(result)
-    # 将查询结果转换为指定dto类型
-    dto_result = model_to_dto(data=result, dto_cls=MpQuestionOptionDTO)
+    # ✅ Service 已返回 DTO 结构，直接返回即可
     # 返回结果
-    return ResponseUtil.success(code=200, message="success", data=dto_result)
+    return ResponseUtil.success(code=200, message="success", data=result)
 
 
 """
