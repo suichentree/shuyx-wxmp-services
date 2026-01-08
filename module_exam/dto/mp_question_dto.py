@@ -17,6 +17,7 @@ class MpQuestionDTO(BaseModel):
     status:Optional[int] = None
     create_time:Optional[datetime] = None
 
+    # 将sqlalchemy模型转换为pydantic模型的配置
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -25,6 +26,7 @@ class MpQuestionOptionDTO(BaseModel):
     question: MpQuestionDTO
     options: Optional[List[MpOptionDTO]] = None  # 一个问题对应多个选项，默认空列表
 
+    # 将sqlalchemy模型转换为pydantic模型的配置
     model_config = ConfigDict(from_attributes=True)
 
 

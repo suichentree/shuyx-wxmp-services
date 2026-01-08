@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from config.database_config import get_db_session
 
 from config.log_config import logger
-from module_exam.dto.mp_exam_dto import MpExamDTO
+from module_exam.dto.mp_exam_dto import MpExamDTO, MpExamCommonDTO
 from module_exam.dto.mp_option_dto import MpOptionDTO
 from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO
 from module_exam.dto.mp_user_exam_dto import MpUserExamDTO
@@ -18,7 +18,8 @@ from module_exam.service.mp_option_service import MpOptionService
 from module_exam.service.mp_question_service import MpQuestionService
 from module_exam.service.mp_user_exam_service import MpUserExamService
 from module_exam.service.mp_user_option_service import MpUserOptionService
-from utils.response_util import ResponseUtil, model_to_dto, ResponseDTO, ResponseDTOBase
+from utils.response_util import ResponseUtil, model_to_dto, ResponseDTO
+from utils.type_conversion_util import TypeConversionUtil
 
 # 创建路由实例
 router = APIRouter(prefix='/mp/exam', tags=['mp_exam接口'])
@@ -32,62 +33,92 @@ MpUserOptionService_instance = MpUserOptionService()
 """
 获取测试列表信息
 """
-@router.get("/getExamList", response_model=ResponseDTO[List[MpExamDTO]])
+@router.get("/getExamList", response_model=ResponseDTO[List[MpExamCommonDTO]])
 def getExamList(page_num:int=1, page_size:int=10,db_session: Session = Depends(get_db_session)):
     logger.info(f'/mp/exam/getExamList, page_num = {page_num}, page_size = {page_size}')
 
-    # 构建dto对象，分页查询，状态正常的考试信息
-    result:List[MpExamModel] = MpExamService_instance.get_page_list_by_filters(db_session, page_num=page_num, page_size=page_size, filters=MpExamDTO(status=0).model_dump())
-    # ✅ 不需要手动转换，FastAPI 自动根据 response_model 转换
-    # 返回结果
+    # 分页查询，状态正常的考试信息
+    dto_dict = MpExamDTO(status=0).model_dump()
+    # 获取列表查询结果
+    result:List[MpExamModel] = MpExamService_instance.get_page_list_by_filters(db_session, page_num=page_num, page_size=page_size, filters=dto_dict)
+    # 响应结果
     return ResponseUtil.success(code=200, message="success", data=result)
 
 
 """
-获取测试题目列表信息
+模拟考试交卷：一次性提交所有题目的答案，并计算分数
 """
-@router.post("/getQuestionList", response_model=ResponseDTO[List[MpQuestionOptionDTO]])
-def getQuestionList(exam_id:int = Body(None,embed=True),db_session: Session = Depends(get_db_session)):
-    logger.info(f'/mp/exam/getQuestionList, exam_id = {exam_id}')
-    # 调用自定义方法获取问题和选项数据
-    result:List[MpQuestionOptionDTO] = MpQuestionService_instance.get_questions_with_options(db_session, exam_id)
-    print(result)
-    # ✅ Service 已返回 DTO 结构，直接返回即可
-    # 返回结果
-    return ResponseUtil.success(code=200, message="success", data=result)
+@router.post("/submit")
+def submit_exam(user_id: int = Body(...),exam_id: int = Body(...),user_exam_id: int = Body(...),
+answer_map: dict[int, List[int]] = Body(...),db_session: Session = Depends(get_db_session)):
+    logger.info(f"/mp/kaoshi/submit, user_id={user_id}, exam_id={exam_id}, user_exam_id={user_exam_id}, answer_map={answer_map}")
 
+    total_score = 0
+    answered_count = 0
 
-"""
-交卷
-"""
-@router.post("/submitAnswerMap")
-def submitAnswerMap(exam_id:int = Body(None),answer_map:dict = Body(None),db_session: Session = Depends(get_db_session)):
-    logger.info(f'/mp/exam/submitAnswerMap, exam_id = {exam_id}, answer_map = {answer_map}')
+    for qid_str, option_ids in answer_map.items():
+        # Body 传 dict 时 key 可能是 str，这里统一转 int
+        question_id = int(qid_str)
+        if not option_ids:
+            continue
 
-    for question_id, option_id in answer_map.items():
+        # 查询题目信息，判断题型（单选/多选/判断）
+        question = MpQuestionService_instance.get_one_by_filters(
+            db_session, filters=MpQuestionDTO(id=question_id).model_dump()
+        )
+        if question is None:
+            logger.warning(f"question_id={question_id} 不存在，跳过")
+            continue
 
-        print(f'question_id = {question_id}, option_id = {option_id}')
+        # 查询正确选项
+        right_options = MpOptionService_instance.get_list_by_filters(
+            db_session,
+            filters=MpOptionDTO(question_id=question_id, is_right=1).model_dump(),
+        )
+        right_ids: List[int] = [opt.id for opt in right_options]
 
-    pass
+        # 计算本题是否作答正确（全对得1分，否则0分）
+        is_right_question = 1 if set(right_ids) == set(option_ids) else 0
+        if is_right_question:
+            total_score += 1
+        answered_count += 1
 
+        # 记录用户选项（多选题会插多条）
+        is_duoxue = 1 if question.type == 2 else 0
+        for oid in option_ids:
+            MpUserOptionService_instance.add(
+                db_session=db_session,
+                dict_data=MpUserOptionDTO(
+                    user_id=user_id,
+                    exam_id=exam_id,
+                    user_exam_id=user_exam_id,
+                    question_id=question_id,
+                    option_id=oid,
+                    is_duoxue=is_duoxue,
+                    is_right=1 if oid in right_ids else 0,
+                ).model_dump(),
+            )
 
+    # 更新本次模拟考试记录
+    update_data = {
+        "page_no": answered_count,
+        "score": total_score,
+        "finish_time": datetime.now(),
+        "type": 1,
+    }
+    MpUserExamService_instance.update_by_id(
+        db_session=db_session,
+        id=user_exam_id,
+        update_data=update_data,
+    )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    return ResponseUtil.success(
+        data={
+            "user_exam_id": user_exam_id,
+            "right_num": total_score,
+            "error_num": answered_count - total_score,
+        }
+    )
 
 
 

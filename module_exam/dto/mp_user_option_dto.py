@@ -11,12 +11,11 @@ class MpUserOptionDTO(BaseModel):
     user_id:Optional[int] = None
     exam_id:Optional[int] = None
     user_exam_id:Optional[int] = None
-    option_id:Optional[int] = None
     question_id:Optional[int] = None
-    is_duoxue:Optional[int] = None
-    is_right:Optional[int] = None
+    option_id: Optional[str] = None
     create_time:Optional[datetime] = None
 
+    # 将sqlalchemy模型转换为pydantic模型的配置
     model_config = ConfigDict(from_attributes=True)
 
 

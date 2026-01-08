@@ -12,6 +12,39 @@ DtoType = TypeVar("DtoType", bound=BaseModel)  # 绑定到Pydantic基类
 
 
 class TypeConversionUtil:
+
+    """
+        将sqlalchemy模型实例转换为字典，仅包含表映射字段，排除内部属性
+        :param source_data: SQLAlchemy模型实例
+        :param exclude_fields: 要排除的字段列表（可选）
+        :return: 包含表映射字段的字典（单实例/列表）
+
+        基于inspect的原生转换：仅获取表映射字段，排除内部属性
+    """
+    @staticmethod
+    def model_to_dict(data: ModelType) -> dict:
+        try:
+            # 反射ORM实例，获取元数据
+            insp = inspect(data)
+            # 遍历所有表字段（仅包含模型中定义的Column字段）
+            result = {}
+            for attr in insp.mapper.column_attrs:
+                # 获取字段名
+                key = attr.key
+                # 获取字段值
+                value = getattr(data, key)
+                # 处理日期时间类型转换
+                if isinstance(value, datetime):
+                    result[key] = value.strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    result[key] = value
+
+            return result
+
+        except Exception as e:
+            # 数据转换失败：抛出明确异常
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"model_to_dict 数据转换失败：{str(e)}")
+
     """
     将sqlalchemy模型实例转换为字典，仅包含表映射字段，排除内部属性
     :param source_data: SQLAlchemy模型实例或实例列表

@@ -24,5 +24,6 @@ class MpUserDTO(BaseModel):
     last_login_time:Optional[datetime] = None
     create_time:Optional[datetime] = None
 
+    # 将sqlalchemy模型转换为pydantic模型的配置
     model_config = ConfigDict(from_attributes=True)
 

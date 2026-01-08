@@ -93,6 +93,8 @@ class BaseDao(Generic[ModelType]):
                     if hasattr(self.model, sort_field):
                         sql = sql.order_by(asc(getattr(self.model, sort_field)))
 
+        # 添加limit(1)限制，确保只返回第一条记录
+        sql = sql.limit(1)
 
         # 执行查询语句并返回查询结果对象
         result = db_session.execute(sql)
@@ -202,9 +204,8 @@ class BaseDao(Generic[ModelType]):
         # 使用 ORM add，确保实例被 Session 管理，commit 后可 refresh 拿到自增 id
         new_instance = self.model(**(dict_data or {}))
         db_session.add(new_instance)
-        db_session.commit()
         # 刷新实例，确保获取到自增 id
-        db_session.refresh(new_instance)
+        db_session.flush()
         return new_instance
 
     def update_by_id(self,db_session: Session,id: int,update_data: Dict = None) -> bool:
@@ -226,8 +227,6 @@ class BaseDao(Generic[ModelType]):
         stmt = update(self.model).where(self.model.id == id).values(**filtered_data)
         # 4. 执行更新语句
         result = db_session.execute(stmt)
-        # 5. 提交事务
-        db_session.commit()
         # 判断是否有记录被更新（受影响行数>0）
         return (result.rowcount or 0) > 0
 
@@ -246,8 +245,6 @@ class BaseDao(Generic[ModelType]):
         stmt = delete(self.model).where(self.model.id == id)
         # 3. 执行删除语句
         result = db_session.execute(stmt)
-        # 4. 提交事务
-        db_session.commit()
         # 判断是否有记录被删除（受影响行数>0）
         return (result.rowcount or 0) > 0
 

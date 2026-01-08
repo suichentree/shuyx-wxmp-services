@@ -18,10 +18,10 @@ from module_exam.service.mp_option_service import MpOptionService
 from module_exam.service.mp_question_service import MpQuestionService
 from module_exam.service.mp_user_exam_service import MpUserExamService
 from module_exam.service.mp_user_option_service import MpUserOptionService
-from utils.response_util import ResponseUtil, model_to_dto, ResponseDTO, ResponseDTOBase
+from utils.response_util import ResponseUtil, model_to_dto
 
 # 创建路由实例
-router = APIRouter(prefix='/mp/practice', tags=['mp_practice接口'])
+router = APIRouter(prefix='/mp/exam/practice', tags=['mp_practice接口'])
 # 创建服务实例
 MpExamService_instance = MpExamService()
 MpOptionService_instance = MpOptionService()
@@ -66,8 +66,8 @@ def _get_question_with_options(db_session: Session, exam_id: int, page_no: int) 
 """
 获取当前顺序练习进度对应的题目；若无未完成记录则新建一轮，从第一题开始
 """
-@router.post("/getCurrentQuestion", response_model=ResponseDTOBase)
-def get_current_question(user_id: int = Body(..., embed=True),exam_id: int = Body(..., embed=True),db_session: Session = Depends(get_db_session)):
+@router.post("/getCurrentQuestion")
+def get_current_question(user_id: int = Body(None, embed=True),exam_id: int = Body(None, embed=True),db_session: Session = Depends(get_db_session)):
     logger.info(f"/mp/practice/getCurrentQuestion, user_id={user_id}, exam_id={exam_id}")
 
     # 题目总数
@@ -144,37 +144,34 @@ def danxue_answer(user_id: int = Body(...),exam_id: int = Body(...),user_exam_id
     if user_exam is None or user_exam.user_id != user_id or user_exam.exam_id != exam_id:
         return ResponseUtil.error(code=400, message="顺序练习记录不存在或不匹配")
 
-    with db_session.begin():
-        # 更新得分与进度
-        new_score = user_exam.score + (1 if option_result.is_right == 1 else 0)
-        update_data = {
-            "page_no": page_no,
-            "score": new_score,
-        }
-        if page_no >= question_count:
-            update_data["finish_time"] = datetime.now()
+    # 更新得分与进度
+    new_score = user_exam.score + (1 if option_result.is_right == 1 else 0)
+    update_data = {
+        "page_no": page_no,
+        "score": new_score,
+    }
+    if page_no >= question_count:
+        update_data["finish_time"] = datetime.now()
 
-        MpUserExamService_instance.update_by_id(
-            db_session=db_session,
-            id=user_exam_id,
-            update_data=update_data,
-            commit=False,
-        )
+    MpUserExamService_instance.update_by_id(
+        db_session=db_session,
+        id=user_exam_id,
+        update_data=update_data,
+    )
 
-        # 记录用户本题作答
-        MpUserOptionService_instance.add(
-            db_session=db_session,
-            dict_data=MpUserOptionDTO(
-                user_id=user_id,
-                exam_id=exam_id,
-                user_exam_id=user_exam_id,
-                is_duoxue=0,
-                question_id=question_id,
-                option_id=option_id,
-                is_right=option_result.is_right,
-            ).model_dump(),
-            commit=False,
-        )
+    # 记录用户本题作答
+    MpUserOptionService_instance.add(
+        db_session=db_session,
+        dict_data=MpUserOptionDTO(
+            user_id=user_id,
+            exam_id=exam_id,
+            user_exam_id=user_exam_id,
+            is_duoxue=0,
+            question_id=question_id,
+            option_id=option_id,
+            is_right=option_result.is_right,
+        ).model_dump(),
+    )
 
     return ResponseUtil.success(
         data={
@@ -211,38 +208,35 @@ def duoxue_answer(user_id: int = Body(...),exam_id: int = Body(...),user_exam_id
     if user_exam is None or user_exam.user_id != user_id or user_exam.exam_id != exam_id:
         return ResponseUtil.error(code=400, message="顺序练习记录不存在或不匹配")
 
-    with db_session.begin():
-        # 更新得分与进度
-        new_score = user_exam.score + (1 if is_same else 0)
-        update_data = {
-            "page_no": page_no,
-            "score": new_score,
-        }
-        if page_no >= question_count:
-            update_data["finish_time"] = datetime.now()
+    # 更新得分与进度
+    new_score = user_exam.score + (1 if is_same else 0)
+    update_data = {
+        "page_no": page_no,
+        "score": new_score,
+    }
+    if page_no >= question_count:
+        update_data["finish_time"] = datetime.now()
 
-        MpUserExamService_instance.update_by_id(
+    MpUserExamService_instance.update_by_id(
+        db_session=db_session,
+        id=user_exam_id,
+        update_data=update_data,
+    )
+
+    # 记录用户本题作答（多选每个选项一条记录）
+    for oid in option_ids:
+        MpUserOptionService_instance.add(
             db_session=db_session,
-            id=user_exam_id,
-            update_data=update_data,
-            commit=False,
+            dict_data=MpUserOptionDTO(
+                user_id=user_id,
+                exam_id=exam_id,
+                user_exam_id=user_exam_id,
+                is_duoxue=1,
+                question_id=question_id,
+                option_id=oid,
+                is_right=1 if oid in right_ids else 0,
+            ).model_dump(),
         )
-
-        # 记录用户本题作答（多选每个选项一条记录）
-        for oid in option_ids:
-            MpUserOptionService_instance.add(
-                db_session=db_session,
-                dict_data=MpUserOptionDTO(
-                    user_id=user_id,
-                    exam_id=exam_id,
-                    user_exam_id=user_exam_id,
-                    is_duoxue=1,
-                    question_id=question_id,
-                    option_id=oid,
-                    is_right=1 if oid in right_ids else 0,
-                ).model_dump(),
-                commit=False,
-            )
 
     return ResponseUtil.success(
         data={

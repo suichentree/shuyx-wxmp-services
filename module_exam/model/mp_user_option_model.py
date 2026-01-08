@@ -17,10 +17,8 @@ class MpUserOptionModel(myBase):
     user_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户id')
     exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='测试id')
     user_exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户测试id')
-    option_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='选项id')
     question_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='问题id')
-    is_duoxue: Mapped[int] = MappedColumn(Integer, nullable=False, comment='是否多选,0为否，1为是')
-    is_right: Mapped[int] = MappedColumn(Integer, nullable=False, comment='是否正确,0为否，1为是')
+    option_id: Mapped[str] = MappedColumn(String(255), nullable=False, comment='选项id数组')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now())
 
     # 添加索引

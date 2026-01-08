@@ -10,16 +10,9 @@ from sqlalchemy.orm import class_mapper
 # 定义一个泛型类型变量
 T = TypeVar('T')
 
-# 定义 Pydantic模型类 ResponseDTO。该类可以接受任意类型的泛型参数T，用于表示响应数据的类型。
+# 定义 Pydantic模型类 ResponseDTO 统一响应类。该类可以接受任意类型的泛型参数T，用于表示响应数据的类型。
 class ResponseDTO(BaseModel, Generic[T]):
-    """
-    统一响应体
-    - 用法示例：
-      @router.get("/xxx", response_model=ResponseDTO[List[MpExamDTO]])
-      def xxx():
-          return ResponseUtil.success(data=[...])
-    """
-    code: int = Field(default=200, description="响应状态码，默认200")
+    code: int = Field(default=200, description="业务状态码，默认200")
     message: str = Field(default="success", description="提示信息，默认success")
     data: Optional[T] = Field(default=None, description="业务数据（默认DTO 类型）,可选")
 
@@ -29,10 +22,7 @@ class ResponseDTO(BaseModel, Generic[T]):
         json_encoders={}  # 可自定义序列化规则（如 datetime → 字符串）
     )
 
-# 为了方便 Controller 导入，也导出一个不带泛型的版本（用于无需精确类型的场景）
-ResponseDTOBase = ResponseDTO[Any]
-
-# 定义响应工具类 ResponseUtil。该类提供各个静态方法，用于创建成功和失败的响应对象。
+# 定义统一响应工具类 ResponseUtil。该类提供各个静态方法，用于创建成功和失败的统一响应对象。
 class ResponseUtil:
     # 定义success方法，用于创建成功的响应对象,默认状态码200，消息"success"
     @staticmethod
@@ -76,6 +66,7 @@ def model_to_dto(data: Any, dto_cls: Type[BaseModel]) -> Any:
     except ValidationError as e:
         # 校验失败：抛出明确异常
         raise HTTPException(status_code=400, detail=f"数据校验失败：{e.errors()}")
+
 
 # 使用示例
 if __name__ == "__main__":
