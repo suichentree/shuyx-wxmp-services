@@ -2,10 +2,11 @@ from typing import Generic, TypeVar, Type, List, Optional, Dict, Any
 
 from sqlalchemy import asc, delete, desc, func, select, update
 from sqlalchemy.orm import Session
-from config.database_config import myBase
+
+from module_exam.model.base_model import myBaseModel
 
 # 定义泛型类型变量，约束为SQLAlchemy的Base模型
-ModelType = TypeVar("ModelType", bound=myBase)
+ModelType = TypeVar("ModelType", bound=myBaseModel)
 
 class BaseDao(Generic[ModelType]):
     """通用DAO基类，封装所有表的通用CRUD方法"""
@@ -204,7 +205,7 @@ class BaseDao(Generic[ModelType]):
         # 使用 ORM add，确保实例被 Session 管理，commit 后可 refresh 拿到自增 id
         new_instance = self.model(**(dict_data or {}))
         db_session.add(new_instance)
-        # 刷新实例，确保获取到自增 id
+        # flush方法可以在不提交事务的情况下刷新实例。确保获取到自增 id
         db_session.flush()
         return new_instance
 

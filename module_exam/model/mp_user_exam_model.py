@@ -5,9 +5,9 @@ from sqlalchemy import Column, Integer, String, DateTime, CHAR, func, Index
 from sqlalchemy.orm import Mapped, MappedColumn
 
 # 导入公共基类
-from config.database_config import myBase
+from module_exam.model.base_model import myBaseModel
 
-class MpUserExamModel(myBase):
+class MpUserExamModel(myBaseModel):
     """
     用户测试表 mp_user_exam
     """
@@ -18,7 +18,7 @@ class MpUserExamModel(myBase):
     exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='测试id')
     type: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户测试类型  0是顺序练习，1是模拟考试')
     page_no: Mapped[int] = MappedColumn(Integer, nullable=False, comment='当前页码')
-    score: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户测试分数')
+    score: Mapped[int] = MappedColumn(Integer, nullable=False, comment='大致正确率（单位：%）')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now())
     finish_time: Mapped[datetime] = MappedColumn(DateTime, comment='测试完成时间')
 
@@ -28,3 +28,8 @@ class MpUserExamModel(myBase):
         Index('index_user_id', 'user_id'),
         Index('index_exam_id', 'exam_id'),
     )
+
+
+if __name__ == '__main__':
+    aaa = MpUserExamModel(id=1, user_id=1, exam_id=1, type=0, page_no=1, score=0, create_time=datetime.now(), finish_time=datetime.now())
+    print(aaa.to_dict())

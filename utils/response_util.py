@@ -42,31 +42,6 @@ class ResponseUtil:
         # 自动转换数据为可序列化格式
         return ResponseDTO(code=code, message=message, data=data)
 
-def model_to_dto(data: Any, dto_cls: Type[BaseModel]) -> Any:
-    """
-    手动复刻 response_model 核心：校验 + 序列化
-    :param data: ORM 实例/列表
-    :param dto_cls: 目标 DTO 类
-    :return: 序列化后的 DTO 数据（字典/字典列表）
-    """
-    try:
-        # 步骤1：校验数据（model_validate → 对应 response_model 的校验）
-        if isinstance(data, list):
-            # 列表场景：TypeAdapter 批量校验
-            validated_data = TypeAdapter(List[dto_cls]).validate_python(data)
-        else:
-            # 单实例场景：直接校验
-            validated_data = dto_cls.model_validate(data)
-
-        # 步骤2：序列化（model_dump → 对应 response_model 的序列化）
-        if isinstance(validated_data, list):
-            return [item.model_dump() for item in validated_data]
-        return validated_data.model_dump()
-
-    except ValidationError as e:
-        # 校验失败：抛出明确异常
-        raise HTTPException(status_code=400, detail=f"数据校验失败：{e.errors()}")
-
 
 # 使用示例
 if __name__ == "__main__":

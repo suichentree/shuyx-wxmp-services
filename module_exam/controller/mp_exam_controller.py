@@ -18,8 +18,7 @@ from module_exam.service.mp_option_service import MpOptionService
 from module_exam.service.mp_question_service import MpQuestionService
 from module_exam.service.mp_user_exam_service import MpUserExamService
 from module_exam.service.mp_user_option_service import MpUserOptionService
-from utils.response_util import ResponseUtil, model_to_dto, ResponseDTO
-from utils.type_conversion_util import TypeConversionUtil
+from utils.response_util import ResponseUtil,ResponseDTO
 
 # 创建路由实例
 router = APIRouter(prefix='/mp/exam', tags=['mp_exam接口'])

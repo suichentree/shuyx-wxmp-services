@@ -1,11 +1,10 @@
 from typing import Generic, TypeVar, Type, List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
-from config.database_config import myBase
 from module_exam.dao.base_dao import BaseDao
+from module_exam.model.base_model import myBaseModel
 
 # 定义泛型类型变量，约束为SQLAlchemy的Base模型
-ModelType = TypeVar("ModelType", bound=myBase)
+ModelType = TypeVar("ModelType", bound=myBaseModel)
 
 class BaseService(Generic[ModelType]):
     """通用Service基类，封装通用业务逻辑"""

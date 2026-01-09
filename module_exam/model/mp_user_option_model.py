@@ -5,9 +5,9 @@ from sqlalchemy import Column, Integer, String, DateTime, CHAR, func, Index
 from sqlalchemy.orm import Mapped, MappedColumn
 
 # 导入公共基类
-from config.database_config import myBase
+from module_exam.model.base_model import myBaseModel
 
-class MpUserOptionModel(myBase):
+class MpUserOptionModel(myBaseModel):
     """
     用户选项表 mp_user_option
     """
