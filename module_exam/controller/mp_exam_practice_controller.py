@@ -76,15 +76,17 @@ def history(user_id: int = Body(None, embed=True), exam_id: int = Body(None, emb
 def start(exam_id: int = Body(..., embed=True), user_id: int = Body(..., embed=True), db_session: Session = Depends(get_db_session)):
     logger.info(f"/mp/exam/practice/start, user_id={user_id}, exam_id={exam_id}")
 
-    # 查询题库总题数
-    total_count = MpQuestionService_instance.get_total_by_filters(
-        db_session,
-        filters=MpQuestionDTO(exam_id=exam_id, status=0).model_dump()
-    )
-    if total_count == 0:
-        return ResponseUtil.error(code=400, message="该考试暂无题目")
-
     with db_session.begin():
+
+        # 查询题库总题数
+        total_count = MpQuestionService_instance.get_total_by_filters(
+            db_session,
+            filters=MpQuestionDTO(exam_id=exam_id, status=0).model_dump()
+        )
+        if total_count == 0:
+            return ResponseUtil.error(code=400, message="该考试暂无题目")
+
+
         # 查找最近一次未完成的顺序练习记录（type=0）
         user_exam = MpUserExamService_instance.get_one_by_filters(
             db_session,
