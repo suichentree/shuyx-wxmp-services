@@ -53,3 +53,39 @@ class MpQuestionService(BaseService[MpQuestionModel]):
 
         # 返回问题选项DTO列表
         return result_dto
+
+
+    def get_one_questions_with_options(self, db_session, question_id: int) -> MpQuestionOptionDTO:
+        """
+        根据问题ID获取问题和对应的选项
+        :param question_id: 问题ID
+        :return: 包含问题和选项的列表
+        """
+
+        # 查询指定exam_id的所有问题
+        query_result = self.dao_instance.get_questions_with_options(db_session, question_id)
+
+        # 构建问题选项字典
+        question_option_dict = {}
+        for question, option in query_result:
+            if question.id not in question_option_dict:
+                # 初始化问题条目
+                question_option_dict[question.id] = {
+                    "question": question,
+                    "options": []
+                }
+            # 如果选项不为None（outerjoin可能产生None），则添加到选项列表
+            if option is not None:
+                question_option_dict[question.id]["options"].append(option)
+
+
+        # 转换为问题选项DTO
+        result_dto = None
+        for data in question_option_dict.values():
+            result_dto = MpQuestionOptionDTO(
+                question=MpQuestionDTO.model_validate(data["question"]),
+                options=[MpOptionDTO.model_validate(opt) for opt in data["options"]]
+            )
+
+        # 返回问题选项DTO列表
+        return result_dto

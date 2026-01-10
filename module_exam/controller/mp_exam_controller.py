@@ -11,13 +11,13 @@ from module_exam.dto.mp_exam_dto import MpExamDTO, MpExamCommonDTO
 from module_exam.dto.mp_option_dto import MpOptionDTO
 from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO
 from module_exam.dto.mp_user_exam_dto import MpUserExamDTO
-from module_exam.dto.mp_user_option_dto import MpUserOptionDTO
+from module_exam.dto.mp_user_exam_option_dto import MpUserExamOptionDTO
 from module_exam.model.mp_exam_model import MpExamModel
 from module_exam.service.mp_exam_service import MpExamService
 from module_exam.service.mp_option_service import MpOptionService
 from module_exam.service.mp_question_service import MpQuestionService
 from module_exam.service.mp_user_exam_service import MpUserExamService
-from module_exam.service.mp_user_option_service import MpUserOptionService
+from module_exam.service.mp_user_exam_option_service import MpUserExamOptionService
 from utils.response_util import ResponseUtil,ResponseDTO
 
 # 创建路由实例
@@ -27,7 +27,7 @@ MpExamService_instance = MpExamService()
 MpOptionService_instance = MpOptionService()
 MpQuestionService_instance = MpQuestionService()
 MpUserExamService_instance = MpUserExamService()
-MpUserOptionService_instance = MpUserOptionService()
+MpUserExamOptionService_instance = MpUserExamOptionService()
 
 """
 获取测试列表信息
@@ -85,9 +85,9 @@ answer_map: dict[int, List[int]] = Body(...),db_session: Session = Depends(get_d
         # 记录用户选项（多选题会插多条）
         is_duoxue = 1 if question.type == 2 else 0
         for oid in option_ids:
-            MpUserOptionService_instance.add(
+            MpUserExamOptionService_instance.add(
                 db_session=db_session,
-                dict_data=MpUserOptionDTO(
+                dict_data=MpUserExamOptionDTO(
                     user_id=user_id,
                     exam_id=exam_id,
                     user_exam_id=user_exam_id,
@@ -183,7 +183,7 @@ def danxueAnswer(user_id:int = Body(None),exam_id:int = Body(None),question_id:i
         MpUserExamService_instance.update_by_id(id=user_exam_result.id,update_data=user_exam_result)
 
     # 新增新的用户选项记录
-    MpUserOptionService_instance.add(db_session=db_session,dict_data=MpUserOptionDTO(
+    MpUserExamOptionService_instance.add(db_session=db_session,dict_data=MpUserExamOptionDTO(
         user_id=user_id,
         exam_id=exam_id,
         is_duoxue=0,
@@ -250,7 +250,7 @@ def duoxue_Answer(user_id:int = Body(None),exam_id:int = Body(None),question_id:
 
     # 创建新的用户选项信息
     for optionId in optionIds:
-        new_user_option = MpUserOptionDTO(
+        new_user_option = MpUserExamOptionDTO(
             user_id=user_id,
             exam_id=exam_id,
             is_duoxue=1,
@@ -259,7 +259,7 @@ def duoxue_Answer(user_id:int = Body(None),exam_id:int = Body(None),question_id:
             is_right=1 if rightIds.__contains__(optionId) else 0,
         )
         # 新增新的用户选项记录
-        MpUserOptionService_instance.add(db_session=db_session,dict_data=new_user_option.model_dump())
+        MpUserExamOptionService_instance.add(db_session=db_session,dict_data=new_user_option.model_dump())
 
     return ResponseUtil.success()
 
@@ -361,7 +361,7 @@ def questionAnalyse(user_id:int = Body(None),examId = Body(None),db_session: Ses
         qtype = question.type
 
         # 查询某个测试的某个问题的选项数据
-        uOption = MpUserOptionService_instance.get_list_by_filters(db_session,filters=MpUserOptionDTO(
+        uOption = MpUserExamOptionService_instance.get_list_by_filters(db_session,filters=MpUserExamOptionDTO(
             user_exam_id=last_finish_user_exam_id,
             question_id=question.id,
         ).model_dump())
@@ -421,7 +421,7 @@ def optionAnalyse(user_exam_id:int = Body(None),questionId = Body(None),db_sessi
 
     # 查询用户选择的选项id集合
     choiceIds = []
-    uoptions = MpUserOptionService_instance.get_list_by_filters(db_session,filters=MpUserOptionDTO(
+    uoptions = MpUserExamOptionService_instance.get_list_by_filters(db_session,filters=MpUserExamOptionDTO(
         user_exam_id=user_exam_id,
         question_id=questionId,
     ).model_dump())

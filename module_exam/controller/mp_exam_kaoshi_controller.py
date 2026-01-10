@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import List
 
@@ -8,16 +9,17 @@ from config.database_config import get_db_session
 
 from config.log_config import logger
 from module_exam.dto.mp_exam_dto import MpExamDTO
+from module_exam.dto.mp_option_dto import MpOptionDTO
 from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO
 from module_exam.dto.mp_user_exam_dto import MpUserExamDTO
-from module_exam.dto.mp_user_option_dto import MpUserOptionDTO
+from module_exam.dto.mp_user_exam_option_dto import MpUserExamOptionDTO
 from module_exam.model.mp_exam_model import MpExamModel
 from module_exam.model.mp_user_exam_model import MpUserExamModel
 from module_exam.service.mp_exam_service import MpExamService
 from module_exam.service.mp_option_service import MpOptionService
 from module_exam.service.mp_question_service import MpQuestionService
 from module_exam.service.mp_user_exam_service import MpUserExamService
-from module_exam.service.mp_user_option_service import MpUserOptionService
+from module_exam.service.mp_user_exam_option_service import MpUserExamOptionService
 from utils.response_util import ResponseUtil,ResponseDTO
 
 # 创建路由实例
@@ -27,7 +29,7 @@ MpExamService_instance = MpExamService()
 MpOptionService_instance = MpOptionService()
 MpQuestionService_instance = MpQuestionService()
 MpUserExamService_instance = MpUserExamService()
-MpUserOptionService_instance = MpUserOptionService()
+MpUserExamOptionService_instance = MpUserExamOptionService()
 
 """
 模拟考试相关接口
@@ -36,7 +38,7 @@ MpUserOptionService_instance = MpUserOptionService()
 """
 获取该用户对应的模拟考试历史记录
 """
-@router.post("/history", response_model=ResponseDTO[dict])
+@router.post("/history", response_model=ResponseDTO)
 def history(user_id: int = Body(None, embed=True), exam_id: int = Body(None, embed=True), db_session: Session = Depends(get_db_session)):
     logger.info(f"/mp/exam/kaoshi/history, user_id={user_id}, exam_id={exam_id}")
 
@@ -47,7 +49,7 @@ def history(user_id: int = Body(None, embed=True), exam_id: int = Body(None, emb
         type=1,
     ).model_dump(),sort_by=["-id"])
 
-    # 根据exam_id查询模拟考试信息
+    # 根据exam_id 获取考试信息
     exam_result: MpExamModel = MpExamService_instance.get_one_by_filters(db_session, filters=MpExamDTO(id=exam_id).model_dump())
 
     # 返回结果
@@ -63,7 +65,7 @@ def history(user_id: int = Body(None, embed=True), exam_id: int = Body(None, emb
 3. 如果没有，创建新的模拟考试记录，并返回模拟考试题目列表
 4. exam_id 和 user_id 不能为空，否则报422错误
 """
-@router.post("/start",response_model=ResponseDTO[dict])
+@router.post("/start",response_model=ResponseDTO)
 def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=True),db_session: Session = Depends(get_db_session)):
     logger.info(f"/mp/exam/kaoshi/start, user_id={user_id}, exam_id={exam_id}")
 
@@ -79,21 +81,26 @@ def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=Tr
 
         # 如果没有未完成的模拟考试记录，创建新的模拟考试记录
         if user_exam is None:
-            # 新建一轮模拟考试，从第一题开始
-            logger.info("未找到未完成模拟考试，创建新的模拟考试记录")
-            # 构建参数
+            logger.info("未找到未完成模拟考试，新建一轮模拟考试")
+
+            # 从题库中获取对应题目和选项
+            question_option_list: List[MpQuestionOptionDTO] = MpQuestionService_instance.get_questions_with_options(db_session, exam_id)
+            # 题目id列表
+            question_ids = [q.question.id for q in question_option_list]
+
+            # 新增插入数据
             user_exam_dto = MpUserExamDTO(
                 user_id=user_id,
                 exam_id=exam_id,
-                type=1,
-                score=0,
+                type=1,  # 模拟考试
+                page_no=1,
+                correct_count=0,  # 答对题目数为0
+                total_count=len(question_option_list),
+                question_ids=question_ids,
                 create_time=datetime.now(),
             )
             # 插入新的用户测试记录
             new_userexam: MpUserExamModel = MpUserExamService_instance.add(db_session, dict_data=user_exam_dto.model_dump())
-
-            # 从题库中获取对应题目和选项
-            question_option_list: List[MpQuestionOptionDTO] = MpQuestionService_instance.get_questions_with_options(db_session, exam_id)
 
             # 返回结果
             return ResponseUtil.success(code=200, message="success", data={
@@ -101,6 +108,9 @@ def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=Tr
                 "user_exam_id": new_userexam.id,
                 "exam_id": new_userexam.exam_id,
                 "page_no": new_userexam.page_no,
+                "correct_count": new_userexam.correct_count,
+                "total_count": new_userexam.total_count,
+                "question_ids": new_userexam.question_ids,
                 "questions": question_option_list,
             })
 
@@ -116,6 +126,9 @@ def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=Tr
                 "user_exam_id": user_exam.id,
                 "exam_id": user_exam.exam_id,
                 "page_no": user_exam.page_no,
+                "correct_count": user_exam.correct_count,
+                "total_count": user_exam.total_count,
+                "question_ids": user_exam.question_ids,
                 "questions": question_option_list,
             })
 
@@ -146,25 +159,145 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
         if user_exam is None:
             return ResponseUtil.error(code=400, message="用户模拟考试记录不存在")
 
-        # 遍历answerMap,将用户选项保存到用户选项表中
-        for question_id, option_id in answer_map.items():
-            # 构建参数
-            user_option_dto = MpUserOptionDTO(
+        # 初始化答对题目数为0
+        correct_count = 0
+        
+        # 遍历answerMap,保存用户选项并计算答对题目数
+        for qid_str, user_option_ids in answer_map.items():
+            # Body 传 dict 时 key 可能是 str，这里统一转 int
+            question_id = int(qid_str)
+
+            # 处理用户选项答案，若是单选，转换为列表格式。
+            if isinstance(user_option_ids, list):
+                user_answer_ids = user_option_ids
+            else:
+                user_answer_ids = [user_option_ids] if user_option_ids else []
+
+            # 根据question_id 查询题目对应的正确选项
+            right_options = MpOptionService_instance.get_list_by_filters(
+                db_session,
+                filters=MpOptionDTO(question_id=question_id, is_right=1, status=0).model_dump(),
+            )
+            # 题目对应的正确选项id列表
+            right_option_ids = [opt.id for opt in right_options]
+
+            # 判断本题是否答对（set集合比较，全对得1分，否则0分）
+            is_correct = (set(right_option_ids) == set(user_answer_ids))
+            if is_correct:
+                correct_count += 1
+            
+            # 保存用户选项记录
+            user_option_dto = MpUserExamOptionDTO(
                 user_id=user_exam.user_id,
                 exam_id=user_exam.exam_id,
                 user_exam_id=user_exam.id,
                 question_id=question_id,
-                option_id=str(option_id),
+                option_ids=user_option_ids,
             )
-            # 插入新的用户选项记录
-            MpUserOptionService_instance.add(db_session, dict_data=user_option_dto.model_dump())
-
-        # 更新用户测试记录的状态为已完成
+            MpUserExamOptionService_instance.add(db_session, dict_data=user_option_dto.model_dump())
+        
+        # 更新用户测试记录
+        user_exam.correct_count = correct_count
+        user_exam.page_no = user_exam.total_count
         user_exam.finish_time = datetime.now()
-        db_session.add(user_exam)
+        MpOptionService_instance.update_by_id(db_session, id=user_exam.id, update_data=user_exam.to_dict())
 
         return ResponseUtil.success(code=200, message="success")
 
 
 
+"""
+获取模拟考试结果
+1. user_exam_id 不能为空，否则报422错误
+2. 若用户模拟考试记录不存在，报400错误
+3. 若用户模拟考试记录存在，返回用户模拟考试结果，包含答对题数、总题数、正确率、错误题数。
+"""
+@router.post("/kaoshiResult",response_model=ResponseDTO)
+def kaoshiResult(user_id: int = Body(..., embed=True),user_exam_id: int = Body(..., embed=True),db_session: Session = Depends(get_db_session)):
+    logger.info(f"/mp/exam/kaoshi/result,user_id={user_id}, user_exam_id={user_exam_id}")
+
+    # 根据user_exam_id 查询用户测试记录
+    user_exam = MpUserExamService_instance.get_one_by_filters(
+        db_session,
+        filters=MpUserExamDTO(id=user_exam_id,user_id=user_id).model_dump(),
+    )
+
+    # 查询模拟考试信息
+    mp_exam = MpExamService_instance.get_one_by_filters(
+        db_session,
+        filters=MpExamDTO(id=user_exam.exam_id).model_dump(),
+    )
+
+    if user_exam is None:
+        return ResponseUtil.error(code=500, message="用户模拟考试记录不存在")
+
+    if user_exam.finish_time is None:
+        return ResponseUtil.error(code=500, message="用户模拟考试未完成")
+
+    if mp_exam is None:
+        return ResponseUtil.error(code=500, message="模拟考试记录不存在")
+
+    # 计算正确率（百分比，保留2位小数）
+    accuracy_rate = round((user_exam.correct_count / user_exam.total_count * 100), 2) if user_exam.total_count > 0 else 0.0
+
+    logger.info(f"用户模拟考试提交完成，user_exam_id={user_exam_id}, 答对题数={user_exam.correct_count}, 总题数={user_exam.total_count}, 正确率={accuracy_rate}%")
+
+    # 获取题目答题详情信息
+    question_details = []
+    question_ids = user_exam.question_ids if user_exam.question_ids else []
+    
+    for question_id in question_ids:
+        # 查询题目信息
+        question = MpQuestionService_instance.get_one_by_filters(
+            db_session,
+            filters=MpQuestionDTO(id=question_id).model_dump()
+        )
+        if question is None:
+            logger.warning(f"question_id={question_id} 不存在，跳过")
+            continue
+        
+        # 查询用户答案
+        user_option_record = MpUserExamOptionService_instance.get_one_by_filters(
+            db_session,
+            filters=MpUserExamOptionDTO(user_exam_id=user_exam_id, question_id=question_id).model_dump()
+        )
+        user_answer = user_option_record.option_ids if user_option_record else None
+        # 统一处理用户答案格式（转为列表）
+        if user_answer is not None:
+            user_answer_ids = user_answer if isinstance(user_answer, list) else [user_answer]
+        else:
+            user_answer_ids = []
+        
+        # 查询正确答案
+        right_options = MpOptionService_instance.get_list_by_filters(
+            db_session,
+            filters=MpOptionDTO(question_id=question_id, is_right=1, status=0).model_dump(),
+        )
+        correct_answer_ids = [opt.id for opt in right_options]
+        
+        # 判断是否答对（集合比较）
+        is_correct = (set(correct_answer_ids) == set(user_answer_ids))
+        
+        # 构建题目详情
+        question_details.append({
+            "question_id": question.id,
+            "question_type": question.type,
+            "question_type_name": question.type_name,
+            "question_name": question.name,
+            "user_answer": user_answer_ids,
+            "correct_answer": correct_answer_ids,
+            "is_correct": 1 if is_correct else 0,
+        })
+
+    return ResponseUtil.success(code=200, message="success", data={
+        "user_exam_id": user_exam.id,
+        "exam_id": user_exam.exam_id,
+        "exam_name": mp_exam.name,
+        "user_id": user_exam.user_id,
+        "correct_count": user_exam.correct_count,
+        "total_count": user_exam.total_count,
+        "accuracy_rate": accuracy_rate,
+        "error_count": user_exam.total_count - user_exam.correct_count,
+        "question_detail_list": question_details,
+    })
 
