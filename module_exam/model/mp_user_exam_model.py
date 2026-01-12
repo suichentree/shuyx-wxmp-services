@@ -18,10 +18,10 @@ class MpUserExamModel(myBaseModel):
     user_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户id')
     exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='测试id')
     type: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户测试类型  0是顺序练习，1是模拟考试')
-    page_no: Mapped[int] = MappedColumn(Integer, nullable=False, comment='当前做题进度（顺序练习用，抽题场景可设为1或NULL）')
+    page_no: Mapped[int] = MappedColumn(Integer, nullable=False, comment='当前做题进度，即做题序号，从1开始。顺序练习时，代表当前做的是第几个题目')
     correct_count: Mapped[int] = MappedColumn(Integer, nullable=False, comment='答对题目数')
     total_count: Mapped[int] = MappedColumn(Integer, nullable=False, comment='总题目数')
-    question_ids: Mapped[List[int]] = MappedColumn(JSON, nullable=False, comment='抽题时的题目ID数组快照，例如：[1, 5, 12, 23, ...] ，不受后续题库变化影响')
+    question_ids: Mapped[List[int]] = MappedColumn(JSON, nullable=False, comment='题目ID数组快照，例如：[1, 5, 12, 23, ...] ，不受后续题库变化影响')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now())
     finish_time: Mapped[datetime] = MappedColumn(DateTime, comment='测试完成时间')
 

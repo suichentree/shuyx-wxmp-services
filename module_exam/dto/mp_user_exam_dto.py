@@ -12,11 +12,11 @@ class MpUserExamDTO(BaseModel):
     user_id:Optional[int] = None
     exam_id:Optional[int] = None
     type:Optional[int] = None           # 用户测试类型  0是顺序练习，1是模拟考试
-    page_no:Optional[int] = None        # 当前做题进度（顺序练习用，抽题场景可设为1或NULL）
+    page_no:Optional[int] = None        # 当前做题进度，值为题目列表中的某一个问题ID
 
     correct_count: Optional[int] = None         # 答对题目数
     total_count:Optional[int] = None            # 总题目数
-    question_ids: Optional[List[int]] = None   # 抽题时的题目ID数组快照，例如：[1, 5, 12, 23, ...] ，不受后续题库变化影响
+    question_ids: Optional[List[int]] = None   # 题目ID数组快照，例如：[1, 5, 12, 23, ...] ，不受后续题库变化影响
 
     create_time:Optional[datetime|bool] = None
     finish_time:Optional[datetime|bool] = None  # NULL表示未完成

@@ -63,7 +63,7 @@ class MpQuestionService(BaseService[MpQuestionModel]):
         """
 
         # 查询指定exam_id的所有问题
-        query_result = self.dao_instance.get_questions_with_options(db_session, question_id)
+        query_result = self.dao_instance.get_one_questions_with_options(db_session, question_id)
 
         # 构建问题选项字典
         question_option_dict = {}

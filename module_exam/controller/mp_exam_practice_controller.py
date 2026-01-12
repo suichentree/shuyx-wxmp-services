@@ -14,6 +14,7 @@ from module_exam.dto.mp_user_exam_dto import MpUserExamDTO
 from module_exam.dto.mp_user_exam_option_dto import MpUserExamOptionDTO
 from module_exam.model.mp_exam_model import MpExamModel
 from module_exam.model.mp_user_exam_model import MpUserExamModel
+from module_exam.model.mp_user_exam_option_model import MpUserExamOptionModel
 from module_exam.service.mp_exam_service import MpExamService
 from module_exam.service.mp_option_service import MpOptionService
 from module_exam.service.mp_question_service import MpQuestionService
@@ -68,8 +69,8 @@ def history(user_id: int = Body(None, embed=True), exam_id: int = Body(None, emb
 """
 开始/继续顺序练习
 1. 检查用户是否有未完成的顺序练习记录
-2. 如果有，返回当前题目（根据page_no）
-3. 如果没有，创建新的顺序练习记录，从第一题开始
+2. 如果有，返回当前题目进度（根据page_no）
+3. 如果没有，创建新的顺序练习记录，返回第一题的题目进度
 4. exam_id 和 user_id 不能为空，否则报422错误
 """
 @router.post("/start", response_model=ResponseDTO)
@@ -85,7 +86,6 @@ def start(exam_id: int = Body(..., embed=True), user_id: int = Body(..., embed=T
         )
         if total_count == 0:
             return ResponseUtil.error(code=400, message="该考试暂无题目")
-
 
         # 查找最近一次未完成的顺序练习记录（type=0）
         user_exam = MpUserExamService_instance.get_one_by_filters(
@@ -110,52 +110,103 @@ def start(exam_id: int = Body(..., embed=True), user_id: int = Body(..., embed=T
             user_exam_dto = MpUserExamDTO(
                 user_id=user_id,
                 exam_id=exam_id,
-                type=0,  # 顺序练习
-                page_no=1,  # 从第一题开始
+                type=0,                     # 顺序练习
+                page_no=1,                  # 设置初始题目进度为第一题
                 correct_count=0,
                 total_count=total_count,
                 question_ids=question_ids,  # 保存所有题目ID快照
                 create_time=datetime.now(),
+                finish_time=None,
             )
+            # 保存新记录
             user_exam = MpUserExamService_instance.add(db_session, dict_data=user_exam_dto.model_dump())
-        else:
-            # 如果已完成，返回提示
-            if user_exam.page_no > user_exam.total_count:
-                return ResponseUtil.success(code=200, message="success", data={
-                    "finished": True,
-                    "message": "当前顺序练习已完成，请重置后重新开始",
-                })
 
-        # 获取当前题目（根据page_no）
-        current_question_id = user_exam.question_ids[user_exam.page_no - 1] if user_exam.page_no <= len(user_exam.question_ids) else None
-        if current_question_id is None:
-            return ResponseUtil.error(code=400, message="题目不存在")
-
-        # 查询当前题目及选项
-        question_option_dto = MpQuestionService_instance.get_one_questions_with_options(db_session, current_question_id)
-        if question_option_dto is None:
-            return ResponseUtil.error(code=400, message="题目不存在")
 
         # 返回结果
         return ResponseUtil.success(code=200, message="success", data={
-            "user_id": user_exam.user_id,
             "user_exam_id": user_exam.id,
-            "exam_id": user_exam.exam_id,
-            "page_no": user_exam.page_no,
-            "total_count": user_exam.total_count,
-            "correct_count": user_exam.correct_count,
-            "finished": False,
-            "question": question_option_dto.question.model_dump() if hasattr(question_option_dto.question, 'model_dump') else question_option_dto.question,
-            "options": [opt.model_dump() if hasattr(opt, 'model_dump') else opt for opt in question_option_dto.options],
         })
 
+"""
+根据题目进度获取题目信息（包含选项），以及该题目是否已被答题。
+- 若page_no参数为空时，则从用户测试记录中获取题目进度
+- 若要获取下一题，则调用时page_no+1
+- 若要获取上一题，则调用时page_no-1
+"""
+@router.post("/getQuestion", response_model=ResponseDTO)
+def getQuestion(user_exam_id: int = Body(..., embed=True),page_no: int = Body(None, embed=True), db_session: Session = Depends(get_db_session)):
+    logger.info(f"/mp/exam/practice/getQuestion, user_exam_id={user_exam_id}, page_no={page_no}")
+
+    # 开启事务管理
+    with db_session.begin():
+        # 查询对应的用户考试记录
+        user_exam: MpUserExamModel = MpUserExamService_instance.get_one_by_filters(
+            db_session,
+            filters=MpUserExamDTO(id=user_exam_id).model_dump(),
+        )
+        # 检查用户考试记录是否存在
+        if user_exam is None:
+            return ResponseUtil.error(code=400, message="用户考试记录不存在")
+
+        # 若page_no参数为空时，则默认获取当前题目进度
+        if page_no is None:
+            page_no = user_exam.page_no
+
+        # 检查题目进度是否有效
+        if page_no is None or page_no < 1 or page_no > user_exam.total_count:
+            return ResponseUtil.error(code=400, message="题目进度无效或超出范围")
+
+        # 根据题目进度查询对应的题目ID
+        current_question_id = user_exam.question_ids[page_no - 1]
+
+        # 查询题目 + 选项
+        question_option_dto: MpQuestionOptionDTO = MpQuestionService_instance.get_one_questions_with_options(db_session, current_question_id)
+        if question_option_dto is None:
+            return ResponseUtil.error(code=400, message="题目不存在")
+
+        # 根据题目ID查询当前题目是否已被答题
+        user_exam_option:MpUserExamOptionModel = MpUserExamOptionService_instance.get_one_by_filters(
+            db_session,
+            filters=MpUserExamOptionDTO(user_exam_id=user_exam.id, question_id=current_question_id).model_dump(),
+        )
+
+        # 创建正确答案选项ID集合和列表
+        right_options_set = set()
+        right_option_ids = []
+        # 遍历选项，将正确选项ID添加到集合和列表
+        for item in question_option_dto.options:
+            if item.is_right == 1:
+                right_options_set.add(item.id)
+                right_option_ids.append(item.id)
+
+        # 用户是否答题正确
+        is_correct = None   
+        # 用户是否答题，返回答题信息。
+        if user_exam_option is None:
+            user_options = None
+        else:
+            # 用户答题选项（单选是int,多选是列表）
+            user_options = user_exam_option.option_ids
+            # 创建用户选项集合
+            user_options_set = set(user_options if isinstance(user_options, list) else [user_options])
+            # 判断集合形式的用户答案是否与正确答案完全匹配
+            is_correct = (user_options_set == right_options_set)
+
+
+        # 返回结果
+        return ResponseUtil.success(code=200, message="success", data={
+            "user_exam_id": user_exam.id,
+            "page_no": page_no,
+            "total_count": user_exam.total_count,
+            "question": question_option_dto.question.model_dump(),
+            "options": [opt.model_dump() for opt in question_option_dto.options],
+            "user_options": user_options,  # 用户选择的选项ID列表（单选是int，多选是列表）
+            "correct_option_ids": right_option_ids,  # 正确答案选项ID列表
+            "is_correct": is_correct,
+        })
 
 """
-提交单题答案（顺序练习一题一题提交）
-1. 提交当前题目的答案
-2. 实时更新correct_count和page_no
-3. 如果是最后一题，自动完成练习
-4. user_exam_id, question_id, option_ids 不能为空，否则报422错误
+提交单题答案
 """
 @router.post("/submitAnswer", response_model=ResponseDTO)
 def submitAnswer(
@@ -167,30 +218,17 @@ def submitAnswer(
     logger.info(f"/mp/exam/practice/submitAnswer, user_exam_id={user_exam_id}, question_id={question_id}, option_ids={option_ids}")
 
     with db_session.begin():
-        # 查询用户测试记录
-        user_exam = MpUserExamService_instance.get_one_by_filters(
+        # 查询对应的用户考试记录
+        user_exam: MpUserExamModel = MpUserExamService_instance.get_one_by_filters(
             db_session,
-            filters=MpUserExamDTO(id=user_exam_id, type=0).model_dump(),
+            filters=MpUserExamDTO(id=user_exam_id).model_dump(),
         )
-
+        # 检查用户考试记录是否存在
         if user_exam is None:
-            return ResponseUtil.error(code=400, message="用户顺序练习记录不存在")
-
-        if user_exam.finish_time is not None:
-            return ResponseUtil.error(code=400, message="顺序练习已完成，无法继续提交")
-
-        # 统一处理用户答案格式
-        user_answer_ids = option_ids if isinstance(option_ids, list) else [option_ids] if option_ids else []
-
-        # 查询正确选项
-        right_options = MpOptionService_instance.get_list_by_filters(
-            db_session,
-            filters=MpOptionDTO(question_id=question_id, is_right=1, status=0).model_dump(),
-        )
-        right_option_ids = [opt.id for opt in right_options]
-
-        # 判断是否答对
-        is_correct = (set(right_option_ids) == set(user_answer_ids))
+            return ResponseUtil.error(code=400, message="用户考试记录不存在")
+        # 检查考试是否已完成
+        if user_exam.finish_time:
+            return ResponseUtil.error(code=400, message="当前考试已完成")
 
         # 保存用户选项记录
         user_option_dto = MpUserExamOptionDTO(
@@ -198,35 +236,108 @@ def submitAnswer(
             exam_id=user_exam.exam_id,
             user_exam_id=user_exam.id,
             question_id=question_id,
-            option_ids=option_ids,  # 保持原始格式
+            option_ids=option_ids,
+            create_time=datetime.now(),
         )
         MpUserExamOptionService_instance.add(db_session, dict_data=user_option_dto.model_dump())
+
+
+        # 处理用户选择的选项ID列表
+        user_answer_ids = option_ids if isinstance(option_ids, list) else [option_ids] if option_ids else []
+        # 查询问题ID对应的正确选项
+        right_options = MpOptionService_instance.get_list_by_filters(
+            db_session,
+            filters=MpOptionDTO(question_id=question_id, is_right=1, status=0).model_dump(),
+        )
+        right_option_ids = [opt.id for opt in right_options]
+
+        # 判断用户选项是否与正确选项完全匹配
+        is_correct = (set(right_option_ids) == set(user_answer_ids))
 
         # 更新答对题数
         if is_correct:
             user_exam.correct_count += 1
 
-        # 更新页码（下一题）
-        user_exam.page_no += 1
+        # 更新用户考试记录
+        MpUserExamService_instance.update_by_id(
+            db_session,
+            id=user_exam.id,
+            update_data=user_exam.to_dict(),
+        )
 
-        # 判断是否完成（最后一题）
-        is_finished = user_exam.page_no > user_exam.total_count
-        if is_finished:
-            user_exam.finish_time = datetime.now()
-            user_exam.page_no = user_exam.total_count  # 保持为总题数
-
-        db_session.add(user_exam)
-
+        # 返回结果
         return ResponseUtil.success(code=200, message="success", data={
             "user_exam_id": user_exam.id,
             "question_id": question_id,
             "is_correct": 1 if is_correct else 0,
-            "correct_count": user_exam.correct_count,
-            "page_no": user_exam.page_no,
-            "total_count": user_exam.total_count,
-            "finished": is_finished,
         })
 
+
+
+"""
+获取答题卡信息
+"""
+@router.post("/getAnswerCardInfo", response_model=ResponseDTO)
+def getAnswerCardInfo(
+    user_exam_id: int = Body(..., embed=True),
+    db_session: Session = Depends(get_db_session)
+):
+    logger.info(f"/mp/exam/practice/getAnswerCardInfo, user_exam_id={user_exam_id}")
+
+    # 开启事务管理
+    with db_session.begin():
+        # 查询对应的用户考试记录
+        user_exam: MpUserExamModel = MpUserExamService_instance.get_one_by_filters(
+            db_session,
+            filters=MpUserExamDTO(id=user_exam_id).model_dump(),
+        )
+        # 检查用户考试记录是否存在
+        if user_exam is None:
+            return ResponseUtil.error(code=400, message="用户考试记录不存在")
+
+
+        question_ids = user_exam.question_ids or []
+        # 拉取所有已答题记录
+        user_exam_options = MpUserExamOptionService_instance.get_list_by_filters(
+            db_session,
+            filters=MpUserExamOptionDTO(user_exam_id=user_exam_id).model_dump()
+        )
+        option_map = {opt.question_id: opt for opt in user_exam_options}
+
+        answer_card = []
+        for idx, question_id in enumerate(question_ids, start=1):
+            user_option_record = option_map.get(question_id)
+            if user_option_record is None:
+                answer_card.append({
+                    "page_no": idx,
+                    "question_id": question_id,
+                    "user_options": None,
+                    "is_correct": None
+                })
+                continue
+
+            user_answer = user_option_record.option_ids
+            user_answer_ids = user_answer if isinstance(user_answer, list) else [user_answer]
+
+            right_options = MpOptionService_instance.get_list_by_filters(
+                db_session,
+                filters=MpOptionDTO(question_id=question_id, is_right=1, status=0).model_dump(),
+            )
+            right_ids = [opt.id for opt in right_options]
+            is_correct = 1 if set(user_answer_ids) == set(right_ids) else 0
+
+            answer_card.append({
+                "page_no": idx,
+                "question_id": question_id,
+                "user_options": user_answer_ids,
+                "is_correct": is_correct
+            })
+
+        return ResponseUtil.success(code=200, message="success", data={
+            "answer_card": answer_card,
+            "total_count": user_exam.total_count,
+            "finished": user_exam.finish_time is not None
+        })
 
 """
 获取顺序练习结果
