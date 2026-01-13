@@ -13,7 +13,9 @@ class MpUserExamOptionDTO(BaseModel):
     exam_id:Optional[int] = None
     user_exam_id:Optional[int] = None
     question_id:Optional[int] = None
-    option_ids: Optional[List[int] | int] = None  # 选项id列表,单选是int,多选是列表
+    question_type:Optional[int] = None
+    option_ids: Optional[List[int]] = None  # 选项id列表
+    is_correct: Optional[int] = None  # 是否答对 答对1 答错0
     create_time:Optional[datetime] = None
 
     # 将sqlalchemy模型转换为pydantic模型的配置

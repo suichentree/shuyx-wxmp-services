@@ -19,7 +19,9 @@ class MpUserExamOptionModel(myBaseModel):
     exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='测试id')
     user_exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户测试id')
     question_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='问题id')
-    option_ids: Mapped[List[int] | int] = MappedColumn(JSON, nullable=False, comment='选项id数组，单选是int,多选是列表。例如：1或[1, 3, 5, ...]')
+    question_type: Mapped[int] = MappedColumn(Integer, nullable=False, comment='问题类型')
+    option_ids: Mapped[List[int]] = MappedColumn(JSON, nullable=False, comment='选项id数组，无论单选多选都是列表。例如：[1, 3, 5, ...]')
+    is_correct: Mapped[int] = MappedColumn(Integer, nullable=False, comment='是否答对 答对1 答错0')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now())
 
     # 添加索引
