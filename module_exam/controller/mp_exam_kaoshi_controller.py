@@ -14,6 +14,7 @@ from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO
 from module_exam.dto.mp_user_exam_dto import MpUserExamDTO
 from module_exam.dto.mp_user_exam_option_dto import MpUserExamOptionDTO
 from module_exam.model.mp_exam_model import MpExamModel
+from module_exam.model.mp_question_model import MpQuestionModel
 from module_exam.model.mp_user_exam_model import MpUserExamModel
 from module_exam.service.mp_exam_service import MpExamService
 from module_exam.service.mp_option_service import MpOptionService
@@ -72,7 +73,7 @@ def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=Tr
     # 使用 with 语句开启事务上下文，自动提交或回滚
     with db_session.begin():
 
-        # 查找最近一次未完成的顺序练习记录（type=1）
+        # 查找最近一次未完成的测试记录（type=1）
         user_exam = MpUserExamService_instance.get_one_by_filters(
             db_session,
             filters=MpUserExamDTO(user_id=user_id, exam_id=exam_id, type=1, finish_time=False).model_dump(),
@@ -88,18 +89,18 @@ def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=Tr
             # 题目id列表
             question_ids = [q.question.id for q in question_option_list]
 
-            # 新增插入数据
+            # 创建新的考试记录
             user_exam_dto = MpUserExamDTO(
                 user_id=user_id,
                 exam_id=exam_id,
-                type=1,  # 模拟考试
-                page_no=1,
-                correct_count=0,  # 答对题目数为0
-                total_count=len(question_option_list),
-                question_ids=question_ids,
+                type=1,  # 模拟考试1
+                last_question_id=question_ids[0],  # 最后做的问题ID，默认初始化为第一题目的id
+                correct_count=0,  # 答对题目数
+                total_count=len(question_option_list),  # 总题目数
+                question_ids=question_ids,  # 保存所有题目ID快照
                 create_time=datetime.now(),
+                finish_time=None,
             )
-            # 插入新的用户测试记录
             new_userexam: MpUserExamModel = MpUserExamService_instance.add(db_session, dict_data=user_exam_dto.model_dump())
 
             # 返回结果
@@ -107,7 +108,7 @@ def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=Tr
                 "user_id": new_userexam.user_id,
                 "user_exam_id": new_userexam.id,
                 "exam_id": new_userexam.exam_id,
-                "page_no": new_userexam.page_no,
+                "last_question_id": new_userexam.last_question_id,
                 "correct_count": new_userexam.correct_count,
                 "total_count": new_userexam.total_count,
                 "question_ids": new_userexam.question_ids,
@@ -125,7 +126,7 @@ def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=Tr
                 "user_id": user_exam.user_id,
                 "user_exam_id": user_exam.id,
                 "exam_id": user_exam.exam_id,
-                "page_no": user_exam.page_no,
+                "last_question_id": user_exam.last_question_id,
                 "correct_count": user_exam.correct_count,
                 "total_count": user_exam.total_count,
                 "question_ids": user_exam.question_ids,
@@ -135,12 +136,11 @@ def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=Tr
 
 """
 提交模拟考试答案(模拟考试只有题目全部做完，才能交卷)
-1. 模拟考试答题数据是一起提交的。
-2. 答题数据是一个Map，key是题目id，value是用户选择的选项id。
-3. 若是单选题，value是用户选择的选项id。若是多选题，value是用户选择的选项id列表。
-4. user_exam_id 和 answer_map 不能为空，否则报422错误
+1. 模拟考试的答题数据是一起提交的。
+2. 答题数据是一个Map，key是题目id，value是用户选择的选项id列表。无论单选多选，选项id都要封装在列表中。
+3. user_exam_id 和 answer_map 不能为空并且类型要正确，否则报422错误
 
-{question_id: option_id, question_id: [option_id1, option_id2]}
+{question_id: [option_id], question_id: [option_id1, option_id2]}
 """
 @router.post("/submitAnswerMap",response_model=ResponseDTO)
 def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict = Body(..., embed=True),db_session: Session = Depends(get_db_session)):
@@ -166,12 +166,18 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
         for qid_str, user_option_ids in answer_map.items():
             # Body 传 dict 时 key 可能是 str，这里统一转 int
             question_id = int(qid_str)
+            
+            # 判断类型
+            if user_option_ids is None or len(user_option_ids) == 0 or not isinstance(user_option_ids, list):
+                return ResponseUtil.error(code=422, message=f"题目id={question_id}的选项格式错误")
 
-            # 处理用户选项答案，若是单选，转换为列表格式。
-            if isinstance(user_option_ids, list):
-                user_answer_ids = user_option_ids
-            else:
-                user_answer_ids = [user_option_ids] if user_option_ids else []
+            # 根据question_id 查询题目信息
+            question_info: MpQuestionModel = MpQuestionService_instance.get_one_by_filters(
+                db_session,
+                filters=MpQuestionDTO(id=question_id, status=0).model_dump(),
+            )
+            if question_info is None:
+                return ResponseUtil.error(code=400, message=f"题目id={question_id}不存在")
 
             # 根据question_id 查询题目对应的正确选项
             right_options = MpOptionService_instance.get_list_by_filters(
@@ -182,7 +188,7 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
             right_option_ids = [opt.id for opt in right_options]
 
             # 判断本题是否答对（set集合比较，全对得1分，否则0分）
-            is_correct = (set(right_option_ids) == set(user_answer_ids))
+            is_correct = (set(right_option_ids) == set(user_option_ids))
             if is_correct:
                 correct_count += 1
             
@@ -192,18 +198,18 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
                 exam_id=user_exam.exam_id,
                 user_exam_id=user_exam.id,
                 question_id=question_id,
+                question_type=question_info.type,       # 题目类型（1：单选题，2：多选题）
+                is_correct=1 if is_correct else 0,      # 1表示答对，0表示答错
                 option_ids=user_option_ids,
             )
             MpUserExamOptionService_instance.add(db_session, dict_data=user_option_dto.model_dump())
         
         # 更新用户测试记录
         user_exam.correct_count = correct_count
-        user_exam.page_no = user_exam.total_count
         user_exam.finish_time = datetime.now()
         MpOptionService_instance.update_by_id(db_session, id=user_exam.id, update_data=user_exam.to_dict())
 
         return ResponseUtil.success(code=200, message="success")
-
 
 
 """
@@ -245,10 +251,9 @@ def kaoshiResult(user_id: int = Body(..., embed=True),user_exam_id: int = Body(.
     # 获取题目答题详情信息
     question_details = []
     question_ids = user_exam.question_ids if user_exam.question_ids else []
-    
     for question_id in question_ids:
         # 查询题目信息
-        question = MpQuestionService_instance.get_one_by_filters(
+        question: MpQuestionModel = MpQuestionService_instance.get_one_by_filters(
             db_session,
             filters=MpQuestionDTO(id=question_id).model_dump()
         )
@@ -257,26 +262,18 @@ def kaoshiResult(user_id: int = Body(..., embed=True),user_exam_id: int = Body(.
             continue
         
         # 查询用户答案
-        user_option_record = MpUserExamOptionService_instance.get_one_by_filters(
+        user_exam_option = MpUserExamOptionService_instance.get_one_by_filters(
             db_session,
             filters=MpUserExamOptionDTO(user_exam_id=user_exam_id, question_id=question_id).model_dump()
         )
-        user_answer = user_option_record.option_ids if user_option_record else None
-        # 统一处理用户答案格式（转为列表）
-        if user_answer is not None:
-            user_answer_ids = user_answer if isinstance(user_answer, list) else [user_answer]
-        else:
-            user_answer_ids = []
-        
+        user_answer_ids = user_exam_option.option_ids if user_exam_option else None
+
         # 查询正确答案
         right_options = MpOptionService_instance.get_list_by_filters(
             db_session,
             filters=MpOptionDTO(question_id=question_id, is_right=1, status=0).model_dump(),
         )
         correct_answer_ids = [opt.id for opt in right_options]
-        
-        # 判断是否答对（集合比较）
-        is_correct = (set(correct_answer_ids) == set(user_answer_ids))
         
         # 构建题目详情
         question_details.append({
@@ -286,7 +283,7 @@ def kaoshiResult(user_id: int = Body(..., embed=True),user_exam_id: int = Body(.
             "question_name": question.name,
             "user_answer": user_answer_ids,
             "correct_answer": correct_answer_ids,
-            "is_correct": 1 if is_correct else 0,
+            "is_correct": user_exam_option.is_correct,
         })
 
     return ResponseUtil.success(code=200, message="success", data={
@@ -300,4 +297,3 @@ def kaoshiResult(user_id: int = Body(..., embed=True),user_exam_id: int = Body(.
         "error_count": user_exam.total_count - user_exam.correct_count,
         "question_detail_list": question_details,
     })
-

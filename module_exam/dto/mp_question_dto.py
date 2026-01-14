@@ -15,6 +15,7 @@ class MpQuestionDTO(BaseModel):
     type:Optional[int] = None
     type_name:Optional[str] = None
     status:Optional[int] = None
+    analysis:Optional[str] = None
     create_time:Optional[datetime] = None
 
     # 将sqlalchemy模型转换为pydantic模型的配置

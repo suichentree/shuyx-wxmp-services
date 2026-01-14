@@ -79,14 +79,6 @@ def start(exam_id: int = Body(..., embed=True), user_id: int = Body(..., embed=T
 
     # 事务管理
     with db_session.begin():
-        # 查询题库总题数
-        total_count = MpQuestionService_instance.get_total_by_filters(
-            db_session,
-            filters=MpQuestionDTO(exam_id=exam_id, status=0).model_dump()
-        )
-        if total_count == 0:
-            return ResponseUtil.error(code=400, message="该考试暂无题目")
-
         # 查找最近一次未完成的顺序练习记录（type=0）
         user_exam = MpUserExamService_instance.get_one_by_filters(
             db_session,
@@ -113,7 +105,7 @@ def start(exam_id: int = Body(..., embed=True), user_id: int = Body(..., embed=T
                 type=0,                             # 顺序练习
                 last_question_id=question_ids[0],   # 最后做的问题ID，默认初始化为第一题目的id
                 correct_count=0,                    # 答对题目数
-                total_count=total_count,            # 总题目数
+                total_count=len(question_ids),      # 总题目数
                 question_ids=question_ids,          # 保存所有题目ID快照
                 create_time=datetime.now(),
                 finish_time=None,
@@ -173,14 +165,42 @@ def getQuestion(user_exam_id: int = Body(..., embed=True),question_id: int = Bod
             user_option_ids = user_exam_option.option_ids
             is_correct = user_exam_option.is_correct
 
+
+        # 检查用户是否已完成测试中所有题目
+        # 先获取用户做的所有选项
+        user_exam_options = MpUserExamOptionService_instance.get_list_by_filters(
+            db_session,
+            filters=MpUserExamOptionDTO(user_exam_id=user_exam.id).model_dump(),
+            sort_by=["-id"]
+        )
+        # 用户已答题的问题ID列表
+        user_exam_question_ids: List[int] = [exam_option.question_id for exam_option in user_exam_options]
+
+        # 所有题目id列表
+        all_question_ids: List[int] = user_exam.question_ids or []
+
+        # 判断用户是否做完所有题目
+        # 比较双方题目列表长度是否一致,比较已答题ID集合与所有题目ID集合是否完全一致
+        is_all_questions_finished = (len(all_question_ids) == len(user_exam_question_ids)  and set(user_exam_question_ids) == set(all_question_ids))
+        if is_all_questions_finished and user_exam.finish_time is None:
+            # 若用户已完成所有题目,且未更新考试时间，则更新考试完成时间
+            user_exam.finish_time = datetime.now()
+            # 更新用户考试记录
+            MpUserExamService_instance.update_by_id(
+                db_session,
+                id=user_exam.id,
+                update_data=user_exam.to_dict(),
+            )
+
         # 返回结果
         return ResponseUtil.success(code=200, message="success", data={
             "user_exam_id": user_exam.id,
             "question_id": question_id,
-            "question_ids": user_exam.question_ids,         # 用户考试记录中的所有题目ID列表
-            "question_options": question_option_dto.model_dump(),  # 当前题目信息,选项信息
-            "selected_option_ids": user_option_ids,               # 用户选择的选项ID列表。若是None则表示未答题。
+            "question_ids": user_exam.question_ids,                 # 用户考试记录中的所有题目ID列表
+            "question_options": question_option_dto.model_dump(),   # 当前题目信息,选项信息
+            "selected_option_ids": user_option_ids,                 # 用户选择的选项ID列表。若是None则表示未答题。
             "is_correct": is_correct,
+            "is_finished": is_all_questions_finished,               # 用户是否已完成所有题目
         })
 
 """

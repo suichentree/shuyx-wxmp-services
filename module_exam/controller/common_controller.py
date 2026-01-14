@@ -22,3 +22,4 @@ def get_token():
     response_data = payload
     response_data["token"] = token
     return ResponseUtil.success(data=response_data)
+

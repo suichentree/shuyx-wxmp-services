@@ -19,6 +19,7 @@ class MpQuestionModel(myBaseModel):
     type: Mapped[int] = MappedColumn(Integer,nullable=False, comment='问题类型 1为单选，2为多选 3为判断')
     type_name: Mapped[str] = MappedColumn(String(20), nullable=False, comment='问题类型文本，对应type字段')
     status: Mapped[int] = MappedColumn(Integer, default=0, comment='测试状态 0正常 -1禁用')
+    analysis: Mapped[str] = MappedColumn(String(500), nullable=False, comment='问题解析')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now()) # 默认为当前时间
 
     # 添加索引
