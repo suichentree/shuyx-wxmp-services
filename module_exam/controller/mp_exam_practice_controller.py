@@ -39,7 +39,7 @@ MpUserExamOptionService_instance = MpUserExamOptionService()
 获取顺序练习历史记录
 """
 @router.post("/history", response_model=ResponseDTO)
-def history(user_id: int = Body(None, embed=True), exam_id: int = Body(None, embed=True), db_session: Session = Depends(get_db_session)):
+def history(user_id: int = Body(..., embed=True), exam_id: int = Body(..., embed=True), db_session: Session = Depends(get_db_session)):
     logger.info(f"/mp/exam/practice/history, user_id={user_id}, exam_id={exam_id}")
 
     # 查询用户顺序练习历史记录,id降序
@@ -120,7 +120,7 @@ def start(exam_id: int = Body(..., embed=True), user_id: int = Body(..., embed=T
 
 """
 根据题目ID获取题目信息（包含选项），以及该题目的答题信息。
-- 若question_id参数为空时，则从用户测试记录中获取last_question_id 作为当前题目ID
+- 若question_id参数为空时，则从用户测试记录中获取last_question_id 作为question_id
 - 若question_id参数不为空时，则根据question_id获取题目信息
 """
 @router.post("/getQuestion", response_model=ResponseDTO)

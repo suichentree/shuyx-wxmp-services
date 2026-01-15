@@ -5,6 +5,7 @@ import pandas as pd
 from typing import List, Optional
 from pydantic import BaseModel
 import os
+from datetime import datetime
 
 from config.database_config import get_db_session
 from config.log_config import logger
@@ -34,80 +35,74 @@ async def importDataByExcel(exam_name: str = Body(...), file: UploadFile = File(
     :param file: 上传的Excel文件
     :return: 导入结果
     """
-    with db_session.begin():
-        # 解析Excel文件
-        parsed_data = parse_excel_file(file)
-        print(parsed_data)
 
-        # 创建考试记录
-        exam_dto = MpExamDTO(
+    # 解析Excel文件
+    parsed_data = parse_excel_file(file)
+    print(parsed_data)
+
+    # 检查数据是否有效
+    if parsed_data is None or len(parsed_data) == 0 or not isinstance(parsed_data, list):
+        return ResponseUtil.error(message="Excel文件内容为空或格式错误")
+
+    # 事务管理(自动提交和回滚)
+    with db_session.begin():
+        # 创建新的考试记录
+        new_exam = MpExamService_instance.add(db_session, dict_data=MpExamDTO(
             name=exam_name,
             tag="特种安全作业",
-            status=0
-        )
-        exam = MpExamService_instance.add(db_session, dict_data=exam_dto.model_dump())
-        
-        # 导入题目和选项
-        question_count = 0
-        option_count = 0
-        
-        for index, row in df.iterrows():
-            # 解析题目类型
-            type_map = {
-                '单选题': 1,
-                '多选题': 2,
-                '判断题': 3
-            }
-            question_type = type_map.get(row['类型'], 1)
-            type_name = row['类型']
-            
-            # 创建题目记录
-            question_dto = MpQuestionDTO(
-                exam_id=exam.id,
-                name=row['题目'],
-                type=question_type,
-                type_name=type_name,
-                status=0
-            )
-            question = MpQuestionService_instance.add(db_session, dict_data=question_dto.model_dump())
-            question_count += 1
-            
-            # 解析正确答案
-            correct_answers = []
-            if isinstance(row['答案'], str):
-                correct_answers = [ans.strip().upper() for ans in row['答案'].split(',')]
-            
-            # 创建选项记录
-            options = [
-                ('A', row['选项A']),
-                ('B', row['选项B']),
-                ('C', row['选项C']),
-                ('D', row['选项D'])
-            ]
-            
-            for option_label, option_content in options:
-                if pd.notna(option_content):  # 跳过空选项
-                    is_right = 1 if option_label in correct_answers else 0
-                    
-                    option_dto = MpOptionDTO(
-                        question_id=question.id,
-                        content=option_content,
-                        is_right=is_right,
-                        status=0
-                    )
-                    MpOptionService_instance.add(db_session, dict_data=option_dto.model_dump())
-                    option_count += 1
-        
+            status=0,
+            created_time=datetime.now(),
+        ).model_dump())
+
+        # 遍历，创建新的题目记录
+        for item in parsed_data:
+            # 新增题目记录, excel文件中只有选择题、判断题。其中选择题都是单选题
+            new_question = MpQuestionService_instance.add(db_session, dict_data=MpQuestionDTO(
+                exam_id=new_exam.id,
+                name=item['question_content'],
+                type= 1 if item['question_type'] == '选择题' else 3 if item['question_type'] == '判断题' else None,  # 1:单选题, 3:判断题
+                type_name= "单选题" if item['question_type'] == '选择题' else "判断题" if item['question_type'] == '判断题' else None,
+                status=0,
+                analysis=item['analysis'],
+                created_time=datetime.now(),
+            ).model_dump())
+
+            # 处理选项数据  {content,is_right}
+            options_list = []
+            if item['question_type'] == '判断题':
+                options_list.append({'content':'对','is_right':1 if item['correct_answer'] == '对' else 0})
+                options_list.append({'content':'错','is_right':1 if item['correct_answer'] == '错' else 0})
+            elif item['question_type'] == '选择题':
+                if item['option_a'] != '':
+                    options_list.append({'content':item['option_a'],'is_right':1 if item['correct_answer'] == 'A' else 0})
+                if item['option_b'] != '':
+                    options_list.append({'content':item['option_b'],'is_right':1 if item['correct_answer'] == 'B' else 0})
+                if item['option_c'] != '':
+                    options_list.append({'content':item['option_c'],'is_right':1 if item['correct_answer'] == 'C' else 0})
+                if item['option_d'] != '':
+                    options_list.append({'content':item['option_d'],'is_right':1 if item['correct_answer'] == 'D' else 0})
+                if item['option_e'] != '':
+                    options_list.append({'content':item['option_e'],'is_right':1 if item['correct_answer'] == 'E' else 0})
+                if item['option_f'] != '':
+                    options_list.append({'content':item['option_f'],'is_right':1 if item['correct_answer'] == 'F' else 0})
+
+            # 新增选项记录
+            for option in options_list:
+                MpOptionService_instance.add(db_session, dict_data=MpOptionDTO(
+                    question_id=new_question.id,
+                    content=option['content'],
+                    is_right=option['is_right'],
+                    status=0,
+                    created_time=datetime.now(),
+                ).model_dump())
+
         return ResponseUtil.success(
             message="数据导入成功",
             data={
-                "exam_id": exam.id,
-                "exam_name": exam.name,
-                "imported_questions": question_count,
-                "imported_options": option_count
+                "exam_id": new_exam.id,
+                "exam_name": new_exam.name,
             }
         )
-
 
 # 解析Excel文件
 def parse_excel_file(file: UploadFile):
@@ -164,6 +159,7 @@ def parse_excel_file(file: UploadFile):
         # 关闭文件对象（避免资源泄漏）
         file.file.close()
 
+        # 返回数据
         return parsed_data
 
         # 异常处理：覆盖核心场景

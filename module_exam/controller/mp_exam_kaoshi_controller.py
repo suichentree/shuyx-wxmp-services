@@ -65,6 +65,18 @@ def history(user_id: int = Body(None, embed=True), exam_id: int = Body(None, emb
 2. 如果有，返回未完成的模拟考试记录，并返回模拟考试题目列表
 3. 如果没有，创建新的模拟考试记录，并返回模拟考试题目列表
 4. exam_id 和 user_id 不能为空，否则报422错误
+
+模拟考试抽取规则概述：若某一道题最近答对了，则下次模拟考试不抽取该题目。即在模拟考试中，只抽取用户最近未做或最近做错的题目。若最终抽取的题目少于100道题，则从最近做对的题目中补充。
+
+模拟考试抽取规则:
+1. 若题库总数小于100,则直接返回所有题目。
+2. 若题库总数大于等于100,则从总题库中按照规则抽取100道题。
+    1. 先获取该用户上一轮模拟考试中，最近做对的题目ID列表。
+    2. 从题库中获取所有题目ID列表。
+    3. 从所有题目ID列表中，排除最近做对的题目ID列表。
+    4. 若题库中剩余题目数大于等于100,则随机抽取100道题。
+    5. 若题库中剩余题目数小于100,则从最近做对的题目中补充。
+
 """
 @router.post("/start",response_model=ResponseDTO)
 def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=True),db_session: Session = Depends(get_db_session)):
