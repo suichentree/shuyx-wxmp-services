@@ -1,6 +1,7 @@
 # 导入FastAPI
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from middlewares.exception_middleware import ExceptionMiddleware
 import uvicorn
 
 # 创建FastAPI应用实例
@@ -11,7 +12,8 @@ app = FastAPI(
 )
 
 # 全局异常处理中间件
-# app.middleware("http")(ExceptionMiddleware)
+app.middleware("http")(ExceptionMiddleware)
+
 # 认证中间件
 # app.middleware("http")(AuthMiddleware)
 # 日志中间件

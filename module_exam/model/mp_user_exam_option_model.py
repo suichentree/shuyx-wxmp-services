@@ -11,6 +11,7 @@ from module_exam.model.base_model import myBaseModel
 class MpUserExamOptionModel(myBaseModel):
     """
     用户选项表 mp_user_exam_option
+    该表记录，用户答题的详情信息。例如用户在A测试的某一次测试记录中的某一道题中，选择了哪些选项，是否答对了。
     """
     __tablename__ = 'mp_user_exam_option'
 

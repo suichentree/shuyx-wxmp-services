@@ -1,6 +1,6 @@
 from typing import Generic, TypeVar, Type, List, Optional, Dict, Any
 
-from sqlalchemy import asc, delete, desc, func, select, update
+from sqlalchemy import asc, delete, desc, func, select, update, text
 from sqlalchemy.orm import Session
 
 from module_exam.model.base_model import myBaseModel
@@ -249,3 +249,60 @@ class BaseDao(Generic[ModelType]):
         # 判断是否有记录被删除（受影响行数>0）
         return (result.rowcount or 0) > 0
 
+    def get_one_by_execute_sql(self, db_session: Session, sql: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+        """
+        执行原生SQL查询，返回单行数据
+        :param sql: SQL查询语句
+        :param params: 参数字典，如 {"id": 1, "name": "test"}
+        :return: 查询结果字典，如果没有结果返回None
+
+        示例：
+        # 查询单条记录
+        single_record = self.get_one_by_execute_sql(db_session, "SELECT * FROM table_name WHERE id = :id", {"id": 1})
+
+        """
+        result = db_session.execute(text(sql), params or {})
+        # 获取列名
+        columns = result.keys()
+        # 获取单行数据
+        row = result.fetchone()
+        if row:
+            return dict(zip(columns, row))
+        return None
+
+    def get_list_by_execute_sql(self, db_session: Session, sql: str, params: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        """
+        执行原生SQL查询，返回多行数据
+        :param sql: SQL查询语句
+        :param params: 参数字典，如 {"id": 1, "name": "test"}
+        :return: 查询结果列表，每行数据为字典格式
+
+        示例：
+        # 查询多条记录
+        records: List[Dict[str, Any]] = self.get_list_by_execute_sql(db_session, "SELECT * FROM table_name WHERE name LIKE :name", {"name": "%test%"})
+
+        """
+        result = db_session.execute(text(sql), params or {})
+        # 获取列名
+        columns = result.keys()
+        # 将每行数据转换为字典
+        return [dict(zip(columns, row)) for row in result.fetchall()]
+
+    def query_scalar_sql(self, db_session: Session, sql: str, params: Dict[str, Any] = None) -> Optional[Any]:
+        """
+        执行原生SQL查询，返回单个标量值。例如查询总记录数、最大值、最小值等。
+        :param sql: SQL查询语句
+        :param params: 参数字典，如 {"id": 1, "name": "test"}
+        :return: 查询结果标量值，如果没有结果返回None
+
+        示例：
+        # 查询总记录数
+        total_count = self.query_scalar_sql(db_session, "SELECT COUNT(*) FROM table_name")
+        # 查询最大值
+        max_value = self.query_scalar_sql(db_session, "SELECT MAX(field_name) FROM table_name")
+        # 查询最小值
+        min_value = self.query_scalar_sql(db_session, "SELECT MIN(field_name) FROM table_name")
+
+        """
+        result = db_session.execute(text(sql), params or {})
+        return result.scalar()

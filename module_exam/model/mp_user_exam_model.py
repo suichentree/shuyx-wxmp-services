@@ -18,6 +18,7 @@ class MpUserExamModel(myBaseModel):
     user_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户id')
     exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='测试id')
     type: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户测试类型  0是顺序练习，1是模拟考试')
+    type_name: Mapped[str] = MappedColumn(String(20), nullable=False, comment='用户测试类型名称')
     last_question_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='最后做的问题ID，用于记录用户最后做题的位置')
     correct_count: Mapped[int] = MappedColumn(Integer, nullable=False, comment='答对题目数')
     total_count: Mapped[int] = MappedColumn(Integer, nullable=False, comment='总题目数')

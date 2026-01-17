@@ -12,6 +12,7 @@ class MpUserExamDTO(BaseModel):
     user_id:Optional[int] = None
     exam_id:Optional[int] = None
     type:Optional[int] = None           # 用户测试类型  0是顺序练习，1是模拟考试
+    type_name:Optional[str] = None
     last_question_id:Optional[int] = None        # 最后做的问题ID，用于记录用户最后做题的位置
 
     correct_count: Optional[int] = None         # 答对题目数
