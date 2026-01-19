@@ -42,7 +42,7 @@ MpUserQuestionEbbinghausTrackService_instance = MpUserQuestionEbbinghausTrackSer
 获取该用户对应的模拟考试历史记录
 """
 @router.post("/history", response_model=ResponseDTO)
-def history(user_id: int = Body(None, embed=True), exam_id: int = Body(None, embed=True), db_session: Session = Depends(get_db_session)):
+def history(user_id: int = Body(..., embed=True), exam_id: int = Body(..., embed=True), db_session: Session = Depends(get_db_session)):
     logger.info(f"/mp/exam/kaoshi/history, user_id={user_id}, exam_id={exam_id}")
 
     # 查询用户模拟考试历史记录,id降序
@@ -251,6 +251,7 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
             else:
                 return ResponseUtil.error(code=422, message=f"选项格式错误,user_option_ids={user_option_ids}")
 
+
             # 根据question_id 查询题目对应的正确选项
             right_options = MpOptionService_instance.get_list_by_filters(
                 db_session,
@@ -260,10 +261,11 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
             right_option_ids = [opt.id for opt in right_options]
             # 判断本题是否答对（set集合比较）
             is_option_correct = (set(right_option_ids) == set(user_answer_ids))
-            # 若答对则增加答对题目数
-            if is_option_correct:
-                correct_count += 1
-            
+            # 是否答对 答对1,答错0
+            is_correct = 1 if is_option_correct else 0
+            # 重新设置答对题目数
+            correct_count = correct_count + is_correct
+
             # 保存用户选项记录
             user_option_dto = MpUserExamOptionDTO(
                 user_id=user_exam.user_id,
@@ -272,43 +274,18 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
                 question_id=question_id,
                 question_type=question_one.type,
                 option_ids=user_option_ids,
-                is_correct=1 if is_option_correct else 0,   #答对1,答错0
+                is_correct=is_correct,
             )
             MpUserExamOptionService_instance.add(db_session, dict_data=user_option_dto.model_dump())
 
-
             # 更新该问题的答题轨迹记录
-
-
-
-
-            # 先查询用户是否已存在该题目答题轨迹记录
-            track_one = MpUserQuestionEbbinghausTrackService_instance.get_one_by_filters(
-                db_session,
-                filters=MpUserQuestionEbbinghausTrackDTO(
-                    user_id=user_exam.user_id,
-                    question_id=question_id,
-                ).model_dump(),
-            )
-
-            # 若不存在，则创建新记录
-            if track_one is None:
-                track_one = MpUserQuestionEbbinghausTrackDTO(
-                    user_id=user_exam.user_id,
-                    question_id=question_id,
-                    exam_id=user_exam.exam_id,
-                    user_exam_id=user_exam.id,
-                    is_correct=is_option_correct,
-                )
-                MpUserQuestionEbbinghausTrackService_instance.add(db_session, dict_data=track_one.model_dump())
-
-
+            MpUserQuestionEbbinghausTrackService_instance.update_question_track(db_session=db_session
+                ,user_id=user_exam.user_id,question_id=question_id,question_type=question_one.type,is_correct=is_correct)
 
         # 更新用户测试记录
         user_exam.correct_count = correct_count
-        user_exam.page_no = user_exam.total_count
         user_exam.finish_time = datetime.now()
-        MpOptionService_instance.update_by_id(db_session, id=user_exam.id, update_data=user_exam.to_dict())
+        MpUserExamService_instance.update_by_id(db_session, id=user_exam.id, update_data=user_exam.to_dict())
 
         return ResponseUtil.success(code=200, message="success")
 

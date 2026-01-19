@@ -60,6 +60,9 @@ class MpUserQuestionEbbinghausTrackService(BaseService[MpUserQuestionEbbinghausT
             # 获取题目
             fetched_ids = method(db_session, user_id, exam_id, need_count)
 
+            # 打印当前优先级的题目ID
+            print(f"当前优先级: {method.__name__}, 抽取出的题目ID是: {fetched_ids}")
+
             # 添加新题目到题目ID集合(自动去重)
             question_ids.update(fetched_ids)
 
@@ -74,7 +77,7 @@ class MpUserQuestionEbbinghausTrackService(BaseService[MpUserQuestionEbbinghausT
         return question_ids
 
 
-    def update_question_track(self,db_session: Session,user_id: int,question_id: int,question_type: int,is_correct: int) -> bool:
+    def update_question_track(self,db_session: Session,user_id: int,question_id: int,question_type: int,is_correct: int):
         """
         更新题目答题轨迹记录
         :param db_session: 数据库会话
@@ -82,7 +85,29 @@ class MpUserQuestionEbbinghausTrackService(BaseService[MpUserQuestionEbbinghausT
         :param question_id: 题目ID
         :param question_type: 题目类型
         :param is_correct: 是否答对 0:答错 1:答对
-        :return: 是否更新成功
+
+        若该题目已存在轨迹记录，则更新记录。
+        若该题目不存在轨迹记录，则创建新记录。
+
+        复习周期为[0,1,3,7,14,30]天
+
+        为了防止一天内大量重复的模拟考试，通过刷题的方式避免 “当天巩固”？措施如下。
+
+        对于当天待复习题目（下次复习时间为当天，status=0）：
+            若答对，复习周期索引+1。下次复习时间为当前时间+复习周期对应的天数。->变为未到期待复习题
+            若答错，复习周期索引重置为0。下次复习时间为当前时间+复习周期对应的天数。->变为当天待复习题
+        对于已过期待复习题（下次复习时间为小于当天，status=0）：
+            若答对，且过期时间在14天内。则复习周期索引+1。下次复习时间为当前时间+复习周期对应的天数。->变为未到期待复习题
+            若答对，且过期时间在14天外。则复习周期索引不变。下次复习时间为当前时间。->变为当天待复习题，但是索引不变。需要未来14天内再次答对才行。
+            若答错，复习周期索引重置为0。下次复习时间为当前时间+复习周期对应的天数。->变为当天待复习题
+        对于未答过的题目（无轨迹记录的题目）：
+            若答对/答错，复习周期索引初始为0。下次复习时间为当前时间+复习周期对应的天数。->变为当天待复习题
+        对于未到期待复习题（下次复习时间为大于当天，status=0）：
+            若答对/答错，复习周期索引和下次复习时间 不变。更新其他信息。->还是未到期待复习题
+        对于已巩固题目（周期索引为-1,status=1）：
+            若答对/120天内答错，复习周期索引和下次复习时间 不变。更新其他信息。-> 还是已巩固题目
+            若120天外答错（即最后做题时间在120天外），复习周期索引重置为0。下次复习时间为当前时间+复习周期对应的天数。->即超过120天答错，已巩固题变为当天待复习题。
+
         """
 
         review_cycle_list = [0,1,3,7,14,30]
@@ -112,28 +137,73 @@ class MpUserQuestionEbbinghausTrackService(BaseService[MpUserQuestionEbbinghausT
             ).to_dict())
 
         else:
-            # 根据答对/答错判断是否需要更新复习周期索引
-            if is_correct:
-                # 如果答对，复习周期索引+1
-                new_cycle_index = track_one.cycle_index+1
-            else:
-                # 如果答错，复习周期索引重置为0
-                new_cycle_index = 0
+            # 若存在轨迹记录,则需要先判断该题目是什么？
 
-            # 如果复习周期索引超过了最大索引，说明已巩固，设置status为1，cycle_index为-1
+            new_cycle_index = None
+            new_next_review_time = None
+
+            # 如果当前题目是待复习题目
+            if track_one.status == 0:
+                if track_one.next_review_time == datetime.now().date():
+                    # 如果是当天待复习题目，答对索引+1，答错索引重置为0。下次更新时间为当前时间+复习周期对应的天数。
+                    if is_correct:
+                        new_cycle_index = track_one.cycle_index+1
+                        new_next_review_time = datetime.now() + timedelta(days=review_cycle_list[new_cycle_index])
+                    else:
+                        new_cycle_index = 0
+                        new_next_review_time = datetime.now() + timedelta(days=review_cycle_list[new_cycle_index])
+                elif track_one.next_review_time > datetime.now().date():
+                    # 如果是未到期待复习题，索引不变,下次复习时间不会改变
+                    new_cycle_index = track_one.cycle_index
+                    new_next_review_time = track_one.next_review_time
+                elif track_one.next_review_time < datetime.now().date():
+                    # 如果是已过期待复习题，根据是否在14天内判断是否需要更新索引
+                    if (datetime.now().date() - track_one.next_review_time).days <= 14:
+                        # 如果在14天内，答对索引+1。下次更新时间为当前时间+复习周期对应的天数。
+                        # 答错索引重置为0。下次更新时间为当前时间+复习周期对应的天数。
+                        if is_correct:
+                            new_cycle_index = track_one.cycle_index+1
+                            new_next_review_time = datetime.now() + timedelta(days=review_cycle_list[new_cycle_index])
+                        else:
+                            new_cycle_index = 0
+                            new_next_review_time = datetime.now() + timedelta(days=review_cycle_list[new_cycle_index])
+                    else:
+                        # 如果在14天外，答对索引不变。下次更新时间为当前时间。需要未来14天内再次复习。
+                        # 答错索引重置为0。下次更新时间为当前时间+复习周期对应的天数。
+                        if is_correct:
+                            new_cycle_index = track_one.cycle_index
+                            new_next_review_time = datetime.now()
+                        else:
+                            new_cycle_index = 0
+                            new_next_review_time = datetime.now() + timedelta(days=review_cycle_list[new_cycle_index])
+            else:
+                # 如果是已巩固题目，根据情况具体更新
+                if is_correct:
+                    # 若答对，索引和状态不变，更新其他信息
+                    new_cycle_index = track_one.cycle_index
+                    new_next_review_time = track_one.next_review_time
+                else:
+                    # 若答错，根据是否在120天内判断是否需要更新索引
+                    if (datetime.now().date() - track_one.last_answer_time).days <= 120:
+                        # 如果在120天内，索引和状态不变，更新其他信息
+                        new_cycle_index = track_one.cycle_index
+                        new_next_review_time = track_one.next_review_time
+                    else:
+                        # 如果在120天外，索引重置为0。下次复习时间为当前时间+复习周期对应的天数。
+                        # 即超过120天答错，已巩固题变为当天待复习题。
+                        new_cycle_index = 0
+                        new_next_review_time = datetime.now() + timedelta(days=review_cycle_list[new_cycle_index])
+
+
             if new_cycle_index >= len(review_cycle_list):
+                # 如果新的复习周期索引超过了最大索引，说明待复习题变为已巩固，则设置status为1，cycle_index为-1
                 new_status = 1
                 new_cycle_index = -1
             else:
-                new_status = 0
+                # 如果新的复习周期索引未超过最大索引，说明仍然是待复习题
+                new_status = track_one.status
 
-            # 更新下一次复习时间
-            if new_status == 0:
-                new_next_review_time = datetime.now() + timedelta(days=review_cycle_list[new_cycle_index])
-            else:
-                new_next_review_time = None
-
-            # 更新记录
+            # 更新轨迹记录
             self.dao_instance.update_by_id(
                 db_session,
                 id=track_one.id,
@@ -142,12 +212,11 @@ class MpUserQuestionEbbinghausTrackService(BaseService[MpUserQuestionEbbinghausT
                     error_count=track_one.error_count+1 if not is_correct else track_one.error_count, # 答错次数
                     total_count=track_one.total_count+1,                       # 总答题次数
                     last_answer_time=datetime.now(), # 最后一次答题时间
-                    status=new_status,       # 0:待复习 1:已巩固
-                    cycle_index=new_cycle_index,  # 复习周期索引初始化为0，-1表示已巩固，其他值表示待复习的复习周期索引
-                    next_review_time= new_next_review_time,  # 下一次复习时间初始化为当前时间+复习周期对应的天数
+                    status=new_status,       # 更新状态 0:待复习 1:已巩固
+                    cycle_index=new_cycle_index,  # 更新复习周期索引初始化为0，-1表示已巩固，其他值表示待复习的复习周期索引
+                    next_review_time= new_next_review_time,  # 更新下一次复习时间
                 ).to_dict(),
             )
-            return True
 
 
 

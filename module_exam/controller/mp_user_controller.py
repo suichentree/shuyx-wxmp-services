@@ -18,6 +18,24 @@ router = APIRouter(prefix='/mp/user', tags=['mp_user接口'])
 # 创建服务实例
 MpUserService_instance = MpUserService()
 
+# 密码登录接口
+@router.post("/passwordLogin")
+def passwordLogin(username:str = Body(...),password:str = Body(...),db_session: Session = Depends(get_db_session)):
+    logger.info(f'/mp/user/passwordLogin, username = {username} password = {password}')
+    # 调用服务层方法，查询用户
+    result = MpUserService_instance.get_one_by_filters(db_session,
+            filters=MpUserModel(name=username,password=password).to_dict())
+    if result is None:
+        return ResponseUtil.error(data={"message": "登录失败,用户名或密码错误"})
+    else:
+        # 获取user id
+        userId = result.id
+        # 创建token,传入openId,userId生成token
+        token = JWTUtil.create_token({"username": username, "userId": userId})
+        # 返回响应数据
+        return ResponseUtil.success(data={"token": token,"userInfo":result.to_dict()})
+
+
 """
 微信登录接口
 1.传入code，得到微信用户的openId
@@ -76,23 +94,7 @@ def wxUserLogin(code:str = Body(None,embed=True),db_session: Session = Depends(g
             # 返回响应数据
             return ResponseUtil.success(data={"isFirstLogin": 0,"token":token,"userInfo":user})
 
-"""
-手机号注册接口
-"""
-@router.get("/phoneRegister")
-def phoneRegister(phone:str,password:str,db_session: Session = Depends(get_db_session)):
-    logger.info(f'/mp/user/phoneRegister, phone = {phone} password = {password}')
-    # 构造用户字典数据
-    user = {
-        "phone": phone,
-        "password": password
-    }
-    # 调用服务层方法，新增用户
-    result = MpUserService_instance.add(db_session,dict_data=user)
-    if result["success"]:
-        return ResponseUtil.success(data={"isRegister": 1, "message": "注册成功"})
-    else:
-        return ResponseUtil.error(data={"isRegister": 0, "message": "注册失败"})
+
 
 """
 电话登录接口
@@ -139,7 +141,23 @@ def phoneLogin(phone:str = Body(None),password:str = Body(None),newpassword:str 
     else:
         return ResponseUtil.error(data={"isReset": 0,"message": "重置密码失败2"})
 
-
+"""
+手机号注册接口
+"""
+@router.get("/phoneRegister")
+def phoneRegister(phone:str,password:str,db_session: Session = Depends(get_db_session)):
+    logger.info(f'/mp/user/phoneRegister, phone = {phone} password = {password}')
+    # 构造用户字典数据
+    user = {
+        "phone": phone,
+        "password": password
+    }
+    # 调用服务层方法，新增用户
+    result = MpUserService_instance.add(db_session,dict_data=user)
+    if result["success"]:
+        return ResponseUtil.success(data={"isRegister": 1, "message": "注册成功"})
+    else:
+        return ResponseUtil.error(data={"isRegister": 0, "message": "注册失败"})
 
 @router.post("/saveUserInfo")
 def saveUserInfo(userInfo:MpUserDTO,db_session:Session = Depends(get_db_session)):

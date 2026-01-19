@@ -20,6 +20,7 @@ class MpUserQuestionEbbinghausTrackDTO(BaseModel):
     status: Optional[int] = None  # 当前题目做题状态：待复习0 已巩固1
     cycle_index: Optional[int] = None  # 艾宾浩斯记忆周期索引，初始索引为0，记忆周期是[1,3,7,14,30]。-1表示已巩固
     create_time:Optional[datetime] = None
+    update_time:Optional[datetime] = None
 
     # 将sqlalchemy模型转换为pydantic模型的配置
     model_config = ConfigDict(from_attributes=True)

@@ -222,8 +222,9 @@ class BaseDao(Generic[ModelType]):
         if not db_obj:
             return False
 
-        # 2. 先过滤掉id字段，不允许更新
-        filtered_data = {k: v for k, v in update_data.items() if k != "id" and hasattr(self.model, k)}
+        # 2. 先过滤掉id字段和None值，不允许更新
+        filtered_data = {k: v for k, v in (update_data or {}).items() if k != "id" and hasattr(self.model, k) and v is not None}
+
         # 3. 构建SQLAlchemy 2.x的update语句
         stmt = update(self.model).where(self.model.id == id).values(**filtered_data)
         # 4. 执行更新语句

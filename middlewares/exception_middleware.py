@@ -20,7 +20,9 @@ async def ExceptionMiddleware(request: Request, call_next: Callable):
                 content={"code": e.code, "message": e.message}
             )
         else:
-            # 将异常信息转换为JSON响应
+            # 先将异常信息打印日志中
+            print(f"异常信息= {str(e)}")
+            # 然后将异常信息转换为JSON响应并返回给客户端
             return JSONResponse(
                 status_code=500,
                 content={"code": 500,"message": f"异常信息= {str(e)}"}

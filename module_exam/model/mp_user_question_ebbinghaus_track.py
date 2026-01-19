@@ -27,6 +27,7 @@ class MpUserQuestionEbbinghausTrackModel(myBaseModel):
     status: Mapped[int] = MappedColumn(Integer, nullable=False, comment='题目做题状态：待复习0 已巩固1')
     cycle_index: Mapped[int] = MappedColumn(Integer, nullable=False, comment='艾宾浩斯记忆周期索引，初始索引为0，记忆周期是[1,3,7,14,30]。-1表示已巩固')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now())
+    update_time: Mapped[datetime] = MappedColumn(DateTime, comment='更新时间', default=func.now(), onupdate=func.now())
 
     # 添加索引
     __table_args__ = (
