@@ -1,8 +1,11 @@
 # 导入FastAPI
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from middlewares.exception_middleware import ExceptionMiddleware
 import uvicorn
+from middlewares.auth_middleware import AuthMiddleware
+from middlewares.exception_middleware import ExceptionMiddleware
+from middlewares.logger_middleware import LoggerMiddleware
+
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -15,9 +18,9 @@ app = FastAPI(
 app.middleware("http")(ExceptionMiddleware)
 
 # 认证中间件
-# app.middleware("http")(AuthMiddleware)
+app.middleware("http")(AuthMiddleware)
 # 日志中间件
-# app.middleware("http")(LoggerMiddleware)
+app.middleware("http")(LoggerMiddleware)
 # 添加 GZip 中间件，压缩大于 2000 字节的响应
 # app.add_middleware(GZipMiddleware, minimum_size=2000)
 
