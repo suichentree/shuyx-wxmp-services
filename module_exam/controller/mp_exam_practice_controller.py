@@ -59,10 +59,28 @@ def history(user_id: int = Body(..., embed=True), exam_id: int = Body(..., embed
         filters=MpExamDTO(id=exam_id).model_dump()
     )
 
+    # 重构返回结果
+    history_list = []
+    for exam in user_exam_history:
+        # 计算已答题数
+        answered_count = exam.correct_count + exam.error_count
+        # 计算未答题数
+        unanswered_count = exam.total_count - answered_count
+        # 计算正确率，避免除数为0
+        accuracy = (exam.correct_count / answered_count) * 100 if answered_count > 0 else 0
+
+        history_list.append({
+            "id": exam.id,
+            "finish_time": exam.finish_time if exam.finish_time else None,
+            "answered_count": answered_count,
+            "unanswered_count": unanswered_count,
+            "accuracy": round(accuracy, 2),  # 保留两位小数
+        })
+
     # 返回结果
     return ResponseUtil.success(code=200, message="success", data={
         "exam_info": exam_result.to_dict() if exam_result else None,
-        "user_exam_history": [exam.to_dict() for exam in user_exam_history],
+        "user_exam_history": history_list
     })
 
 
@@ -111,8 +129,10 @@ def start(exam_id: int = Body(..., embed=True), user_id: int = Body(..., embed=T
                 user_id=user_id,
                 exam_id=exam_id,
                 type=0,                             # 顺序练习
+                type_name="顺序练习",
                 last_question_id=question_ids[0],   # 最后做的问题ID，默认初始化为第一题目的id
                 correct_count=0,                    # 答对题目数
+                error_count=0,                     # 答错题目数
                 total_count=total_count,            # 总题目数
                 question_ids=question_ids,          # 保存所有题目ID快照
                 create_time=datetime.now(),
@@ -232,9 +252,11 @@ def submitAnswer(
         )
         MpUserExamOptionService_instance.add(db_session, dict_data=user_option_dto.model_dump())
 
-        # 更新答对题数
+        # 更新答对/答错题目数
         if is_option_correct:
             user_exam.correct_count += 1
+        else:
+            user_exam.error_count += 1
 
         # 更新最新答题题目ID
         user_exam.last_question_id = question_id
@@ -298,7 +320,7 @@ def getAnswerCardInfo(
 获取顺序练习结果
 1. user_exam_id 不能为空，否则报422错误
 2. 若用户顺序练习记录不存在，报400错误
-3. 若用户顺序练习记录存在，返回顺序练习结果，包含答对题数、总题数、正确率、错误题数、题目详情
+3. 若用户顺序练习记录存在，返回练习结果，包含答对题数、总题数、正确率、错误题数、题目详情。
 """
 @router.post("/practiceResult", response_model=ResponseDTO)
 def practiceResult(user_id: int = Body(..., embed=True), user_exam_id: int = Body(..., embed=True), db_session: Session = Depends(get_db_session)):
@@ -313,9 +335,6 @@ def practiceResult(user_id: int = Body(..., embed=True), user_exam_id: int = Bod
     if user_exam is None:
         return ResponseUtil.error(code=400, message="用户顺序练习记录不存在")
 
-    if user_exam.finish_time is None:
-        return ResponseUtil.error(code=400, message="用户顺序练习未完成")
-
     # 查询考试信息
     mp_exam = MpExamService_instance.get_one_by_filters(
         db_session,
@@ -326,23 +345,26 @@ def practiceResult(user_id: int = Body(..., embed=True), user_exam_id: int = Bod
         return ResponseUtil.error(code=400, message="考试记录不存在")
 
     # 计算正确率（百分比，保留2位小数）
-    accuracy_rate = round((user_exam.correct_count / user_exam.total_count * 100), 2) if user_exam.total_count > 0 else 0.0
-
-    logger.info(f"用户顺序练习完成，user_exam_id={user_exam_id}, 答对题数={user_exam.correct_count}, 总题数={user_exam.total_count}, 正确率={accuracy_rate}%")
+    accuracy_rate = round((user_exam.correct_count / (user_exam.correct_count + user_exam.error_count)) * 100, 2)  if user_exam.correct_count > 0 else 0.0
+    logger.info(f"用户顺序练习完成，user_exam_id={user_exam_id}, 答对题数={user_exam.correct_count}, 错误题数={user_exam.error_count}, 总题数={user_exam.total_count}, 正确率={accuracy_rate}%")
 
     # 获取题目答题详情信息
     question_details = []
     question_ids = user_exam.question_ids if user_exam.question_ids else []
 
     for question_id in question_ids:
-        # 查询题目信息
-        question = MpQuestionService_instance.get_one_by_filters(
-            db_session,
-            filters=MpQuestionDTO(id=question_id).model_dump()
-        )
-        if question is None:
+        # 查询题目信息（包含选项）
+        question_with_options = MpQuestionService_instance.get_one_questions_with_options(db_session, question_id)
+        if question_with_options is None:
             logger.warning(f"question_id={question_id} 不存在，跳过")
             continue
+
+        question = question_with_options.question
+
+        # 创建选项ID到文本的映射
+        option_id_to_text = {}
+        for option in question_with_options.options:
+            option_id_to_text[option.id] = option.content
 
         # 查询用户答案
         user_option_record = MpUserExamOptionService_instance.get_one_by_filters(
@@ -363,8 +385,17 @@ def practiceResult(user_id: int = Body(..., embed=True), user_exam_id: int = Bod
         )
         correct_answer_ids = [opt.id for opt in right_options]
 
-        # 判断是否答对（集合比较）
-        is_correct = (set(correct_answer_ids) == set(user_answer_ids))
+        # 判断是否答对/答对/未答（集合比较）
+        if len(set(user_answer_ids)) == 0:
+            is_correct = -1  # 未答
+        elif (set(correct_answer_ids) == set(user_answer_ids)):
+            is_correct = 1
+        else:
+            is_correct = 0
+
+        # 将答案ID转换为包含文本的字典
+        user_answer_with_text = [option_id_to_text.get(id, "") for id in user_answer_ids]
+        correct_answer_with_text = [option_id_to_text.get(id, "") for id in correct_answer_ids]
 
         # 构建题目详情
         question_details.append({
@@ -372,9 +403,9 @@ def practiceResult(user_id: int = Body(..., embed=True), user_exam_id: int = Bod
             "question_type": question.type,
             "question_type_name": question.type_name,
             "question_name": question.name,
-            "user_answer": user_answer_ids,
-            "correct_answer": correct_answer_ids,
-            "is_correct": 1 if is_correct else 0,
+            "user_answer": user_answer_with_text,
+            "correct_answer": correct_answer_with_text,
+            "is_correct": is_correct,
         })
 
     return ResponseUtil.success(code=200, message="success", data={
@@ -383,8 +414,8 @@ def practiceResult(user_id: int = Body(..., embed=True), user_exam_id: int = Bod
         "exam_name": mp_exam.name,
         "user_id": user_exam.user_id,
         "correct_count": user_exam.correct_count,
+        "error_count": user_exam.error_count,
         "total_count": user_exam.total_count,
         "accuracy_rate": accuracy_rate,
-        "error_count": user_exam.total_count - user_exam.correct_count,
         "question_detail_list": question_details,
     })

@@ -16,6 +16,7 @@ class MpUserExamDTO(BaseModel):
     last_question_id:Optional[int] = None        # 最后做的问题ID，用于记录用户最后做题的位置
 
     correct_count: Optional[int] = None         # 答对题目数
+    error_count: Optional[int] = None         # 答错题目数
     total_count:Optional[int] = None            # 总题目数
     question_ids: Optional[List[int]] = None   # 题目ID数组快照，例如：[1, 5, 12, 23, ...] ，不受后续题库变化影响
 

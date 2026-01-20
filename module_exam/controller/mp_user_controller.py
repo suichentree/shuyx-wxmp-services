@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends,Request
 from sqlalchemy.orm import Session
 
 from config.database_config import get_db_session
@@ -33,7 +33,34 @@ def passwordLogin(username:str = Body(...),password:str = Body(...),db_session: 
         # 创建token,传入openId,userId生成token
         token = JWTUtil.create_token({"username": username, "userId": userId})
         # 返回响应数据
-        return ResponseUtil.success(data={"token": token,"userInfo":result.to_dict()})
+        return ResponseUtil.success(data={"token": token,"userName": username, "userId": userId})
+
+@router.post("/logout")
+def logout(request: Request):
+    """
+    用户注销登录接口
+    由于JWT token存储在客户端，服务器端无法直接清除
+    该接口主要用于记录注销日志，并提示客户端清除本地存储的token
+    """
+
+    logger.info(f'/mp/user/logout, 注销登录请求')
+    # 尝试从请求头获取token
+    token = request.headers.get("Authorization")
+    if token and token.startswith("Bearer "):
+        token = token.split(" ")[1]
+        # 记录注销日志
+        try:
+            payload = JWTUtil.get_payload(token)
+            if payload:
+                logger.info(f"/mp/user/logout, 用户注销登录, userId={payload.get('userId')}, username={payload.get('username')}")
+            else:
+                logger.info(f"/mp/user/logout, 用户注销登录, 无效token")
+        except Exception as e:
+            logger.error(f"/mp/user/logout, 处理token时发生异常: {str(e)}")
+
+    # 在JWT认证机制中，服务器端无法直接清除token
+    # 客户端需要在收到响应后，自行清除本地存储的token
+    return ResponseUtil.success(data={"message": "退出成功，请客户端清除本地存储的token"})
 
 
 """
@@ -178,5 +205,8 @@ def getUserInfo(userId:int = Body(None),db_session:Session = Depends(get_db_sess
         logger.info(f'/mp/user/getUserInfo, userId = {userId}')
         # 调用服务层方法，查询用户信息
         result = MpUserService_instance.get_one_by_filters(db_session,filters={"id": userId})
+        if result is None:
+            return ResponseUtil.error(data={"message": "用户不存在"})
+
         # 若result为空，则返回空字典。不为空则返回result
         return ResponseUtil.success(data=result)

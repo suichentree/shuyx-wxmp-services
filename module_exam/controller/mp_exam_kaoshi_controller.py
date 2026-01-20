@@ -148,6 +148,7 @@ def start(exam_id: int = Body(..., embed=True),user_id: int = Body(..., embed=Tr
                 type=1,  # 模拟考试
                 type_name="模拟考试",
                 correct_count=0,  # 答对题目数为0
+                error_count=0,                     # 答错题目数为0
                 total_count=kaoshi_question_total_count,
                 question_ids=question_ids,
                 create_time=datetime.now(),
@@ -233,6 +234,8 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
 
         # 初始化答对题目数为0
         correct_count = 0
+        # 初始化答错题目数为0
+        error_count = 0
         
         # 遍历answerMap,保存用户选项并计算答对题目数
         for qid_str, user_option_ids in answer_map.items():
@@ -263,8 +266,11 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
             is_option_correct = (set(right_option_ids) == set(user_answer_ids))
             # 是否答对 答对1,答错0
             is_correct = 1 if is_option_correct else 0
-            # 重新设置答对题目数
-            correct_count = correct_count + is_correct
+            # 重新设置答对/答错题目数
+            if is_correct:
+                correct_count += 1
+            else:
+                error_count += 1
 
             # 保存用户选项记录
             user_option_dto = MpUserExamOptionDTO(
@@ -284,6 +290,7 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
 
         # 更新用户测试记录
         user_exam.correct_count = correct_count
+        user_exam.error_count = error_count
         user_exam.finish_time = datetime.now()
         MpUserExamService_instance.update_by_id(db_session, id=user_exam.id, update_data=user_exam.to_dict())
 
@@ -306,6 +313,9 @@ def kaoshiResult(user_id: int = Body(..., embed=True),user_exam_id: int = Body(.
         db_session,
         filters=MpUserExamDTO(id=user_exam_id,user_id=user_id).model_dump(),
     )
+
+    if user_exam is None:
+        return ResponseUtil.error(code=400, message="用户模拟考试记录不存在")
 
     # 查询模拟考试信息
     mp_exam = MpExamService_instance.get_one_by_filters(
@@ -330,17 +340,30 @@ def kaoshiResult(user_id: int = Body(..., embed=True),user_exam_id: int = Body(.
     # 获取题目答题详情信息
     question_details = []
     question_ids = user_exam.question_ids if user_exam.question_ids else []
-    
+
+    # 一次性获取所有问题及其选项
+    question_option_dtos: List[MpQuestionOptionDTO] = MpQuestionService_instance.get_questions_with_options_by_questionids(db_session, question_ids=question_ids)
+
+    # 创建问题ID到选项信息的映射
+    question_options_map = {}
+    for qod in question_option_dtos:
+        # 创建选项ID到文本的映射
+        option_map = {opt.id: opt.content for opt in qod.options}
+        question_options_map[qod.question.id] = {
+            "question": qod.question,
+            "option_map": option_map
+        }
+
     for question_id in question_ids:
-        # 查询题目信息
-        question = MpQuestionService_instance.get_one_by_filters(
-            db_session,
-            filters=MpQuestionDTO(id=question_id).model_dump()
-        )
-        if question is None:
+        if question_id not in question_options_map:
             logger.warning(f"question_id={question_id} 不存在，跳过")
             continue
-        
+
+        # 获取问题和选项映射
+        question_info = question_options_map[question_id]
+        question = question_info["question"]
+        option_map = question_info["option_map"]
+
         # 查询用户答案
         user_option_record = MpUserExamOptionService_instance.get_one_by_filters(
             db_session,
@@ -352,25 +375,31 @@ def kaoshiResult(user_id: int = Body(..., embed=True),user_exam_id: int = Body(.
             user_answer_ids = user_answer if isinstance(user_answer, list) else [user_answer]
         else:
             user_answer_ids = []
-        
+
+        # 将用户答案ID转换为文本
+        user_answer_texts = [option_map[opt_id] for opt_id in user_answer_ids if opt_id in option_map]
+
         # 查询正确答案
         right_options = MpOptionService_instance.get_list_by_filters(
             db_session,
             filters=MpOptionDTO(question_id=question_id, is_right=1, status=0).model_dump(),
         )
         correct_answer_ids = [opt.id for opt in right_options]
-        
+
+        # 将正确答案ID转换为文本
+        correct_answer_texts = [option_map[opt_id] for opt_id in correct_answer_ids if opt_id in option_map]
+
         # 判断是否答对（集合比较）
         is_correct = (set(correct_answer_ids) == set(user_answer_ids))
-        
+
         # 构建题目详情
         question_details.append({
             "question_id": question.id,
             "question_type": question.type,
             "question_type_name": question.type_name,
             "question_name": question.name,
-            "user_answer": user_answer_ids,
-            "correct_answer": correct_answer_ids,
+            "user_answer_text": user_answer_texts,
+            "correct_answer_text": correct_answer_texts,
             "is_correct": 1 if is_correct else 0,
         })
 

@@ -21,6 +21,7 @@ class MpUserExamModel(myBaseModel):
     type_name: Mapped[str] = MappedColumn(String(20), nullable=False, comment='用户测试类型名称')
     last_question_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='最后做的问题ID，用于记录用户最后做题的位置')
     correct_count: Mapped[int] = MappedColumn(Integer, nullable=False, comment='答对题目数')
+    error_count: Mapped[int] = MappedColumn(Integer, nullable=False, comment='答错题目数')
     total_count: Mapped[int] = MappedColumn(Integer, nullable=False, comment='总题目数')
     question_ids: Mapped[List[int]] = MappedColumn(JSON, nullable=False, comment='题目ID数组快照，例如：[1, 5, 12, 23, ...] ，不受后续题库变化影响')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now())
