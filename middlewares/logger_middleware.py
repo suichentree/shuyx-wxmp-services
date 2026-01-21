@@ -12,7 +12,7 @@ async def LoggerMiddleware(request: Request, call_next: Callable):
         "client": str(request.client) if request.client else None
     }
     # 记录请求信息
-    logger.info(f"Request Info: {request_info}")
+    logger.info(f"LoggerMiddleware ==> {request_info}")
 
     # 继续处理请求，并获取响应对象
     response = await call_next(request)

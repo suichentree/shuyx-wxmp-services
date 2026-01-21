@@ -1,11 +1,5 @@
-from fastapi import HTTPException
-from pydantic import BaseModel, Field, ConfigDict, TypeAdapter
-from typing import Generic, TypeVar, Optional, Any, Dict, List, Type
-
-from pydantic_core import ValidationError
-from sqlalchemy import Row
-from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.orm import class_mapper
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Generic, TypeVar, Optional
 
 # 定义一个泛型类型变量
 T = TypeVar('T')

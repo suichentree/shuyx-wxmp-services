@@ -30,6 +30,14 @@ class MpQuestionOptionDTO(BaseModel):
     # 将sqlalchemy模型转换为pydantic模型的配置
     model_config = ConfigDict(from_attributes=True)
 
+class MpQuestionOptionTraceDTO(BaseModel):
+    question: MpQuestionDTO
+    options: Optional[List[MpOptionDTO]] = None  # 一个问题对应多个选项，默认空列表
+    error_count: Optional[int] = None
+    correct_count: Optional[int] = None
+    total_count: Optional[int] = None
 
+    # 将sqlalchemy模型转换为pydantic模型的配置
+    model_config = ConfigDict(from_attributes=True)
 
 

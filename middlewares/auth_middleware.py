@@ -1,17 +1,16 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from typing import Callable
+from utils.jwt_util import JWTUtil
 
 # 认证中间件
 async def AuthMiddleware(request: Request, call_next: Callable):
-    print("AuthMiddleware========================")
-
     # 精确匹配的路径
-    exact_paths = ["/", "/login", "/docs", "/redoc", "/openapi.json"]
+    exact_paths = ["/", "/login", "/logout", "/docs", "/redoc", "/openapi.json"]
 
     # 测试路径前缀（支持通配符效果）
     test_path_prefixes = [
-        "/mp/",  # 匹配所有以 /test/ 开头的路径
+        "/test/",  # 匹配所有以XXX开头的路径
     ]
 
     # 检查是否是精确匹配的路径
@@ -19,7 +18,7 @@ async def AuthMiddleware(request: Request, call_next: Callable):
         # 直接放行
         return await call_next(request)
 
-    # 检查是否是测试路径前缀
+    # 检查是否是测试路径前缀匹配的路径,如果是,直接放行
     for prefix in test_path_prefixes:
         if request.url.path.startswith(prefix):
             return await call_next(request)
@@ -34,9 +33,10 @@ async def AuthMiddleware(request: Request, call_next: Callable):
             content={"detail": "未授权访问，需要有效的token"}
         )
 
-    # 这里可以添加更复杂的 token 验证逻辑
+    # 获取token
     token = auth_header.split(" ")[1]
-    if token != "valid-token":  # 实际应用中应该验证真实的 token
+    # 验证token是否有效
+    if JWTUtil.verify_token(token) is False:
         return JSONResponse(
             status_code=401,
             content={"detail": "无效的 token"}

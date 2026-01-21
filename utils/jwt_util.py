@@ -19,7 +19,7 @@ class JWTUtil:
             生成的JWT token字符串
         """
         # 设置过期时间为一个小时后
-        payload["exp"] = int(time.time()) + 60 * 60  # 一个小时过期
+        payload["exp"] = int(time.time()) + 60 * 60 * 3  # 3个小时过期
         # 生成JWT token
         token = jwt.encode(payload, JWTUtil.SECRET_KEY, algorithm=JWTUtil.ALGORITHM)
         return token

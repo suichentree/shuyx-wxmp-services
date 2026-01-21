@@ -10,6 +10,7 @@ from typing import Optional, List
 class MpUserQuestionEbbinghausTrackDTO(BaseModel):
     id:Optional[int] = None          # Optional[int] = None 表示类型可以是int,也可以是 None，默认值为 None
     user_id:Optional[int] = None
+    exam_id:Optional[int] = None
     question_id:Optional[int] = None
     question_type:Optional[int] = None
     correct_count: Optional[int] = None  # 做对次数

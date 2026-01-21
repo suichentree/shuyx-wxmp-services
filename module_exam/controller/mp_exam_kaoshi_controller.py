@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from typing import List
 
@@ -13,7 +12,6 @@ from module_exam.dto.mp_option_dto import MpOptionDTO
 from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO
 from module_exam.dto.mp_user_exam_dto import MpUserExamDTO
 from module_exam.dto.mp_user_exam_option_dto import MpUserExamOptionDTO
-from module_exam.dto.mp_user_question_ebbinghaus_track_dto import MpUserQuestionEbbinghausTrackDTO
 from module_exam.model.mp_exam_model import MpExamModel
 from module_exam.model.mp_user_exam_model import MpUserExamModel
 from module_exam.service.mp_exam_service import MpExamService
@@ -286,7 +284,7 @@ def submitAnswerMap(user_exam_id: int = Body(..., embed=True),answer_map: dict =
 
             # 更新该问题的答题轨迹记录
             MpUserQuestionEbbinghausTrackService_instance.update_question_track(db_session=db_session
-                ,user_id=user_exam.user_id,question_id=question_id,question_type=question_one.type,is_correct=is_correct)
+                ,user_id=user_exam.user_id,exam_id=user_exam.exam_id,question_id=question_id,question_type=question_one.type,is_correct=is_correct)
 
         # 更新用户测试记录
         user_exam.correct_count = correct_count

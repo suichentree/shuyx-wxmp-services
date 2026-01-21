@@ -17,6 +17,7 @@ class MpUserQuestionEbbinghausTrackModel(myBaseModel):
 
     id: Mapped[int] = MappedColumn(Integer, primary_key=True, autoincrement=True, comment='用户选项id')
     user_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='用户id')
+    exam_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='测试id')
     question_id: Mapped[int] = MappedColumn(Integer, nullable=False, comment='问题id')
     question_type: Mapped[int] = MappedColumn(Integer, nullable=False, comment='问题类型')
     correct_count: Mapped[int] = MappedColumn(Integer, nullable=False, comment='做对次数')

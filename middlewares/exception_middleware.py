@@ -6,7 +6,6 @@ from config.log_config import logger  # 导入项目配置的日志系统
 
 # 全局异常处理中间件
 async def ExceptionMiddleware(request: Request, call_next: Callable):
-    print("ExceptionMiddleware===============")
     try:
         # 正常请求
         response = await call_next(request)
@@ -19,7 +18,7 @@ async def ExceptionMiddleware(request: Request, call_next: Callable):
         error_traceback = traceback.format_exc()
         
         # 使用项目配置的日志系统记录异常信息，包括堆栈
-        logger.error(f"请求异常: {request.url}\n异常类型: {type(e).__name__}\n异常信息: {str(e)}\n堆栈信息:\n{error_traceback}")
+        logger.error(f"ExceptionMiddleware ==> 请求异常: {request.url}\n异常类型: {type(e).__name__}\n异常信息: {str(e)}\n堆栈信息:\n{error_traceback}")
 
         # 若异常信息包含code和message属性，则封装为JSON响应
         if hasattr(e, 'code') and hasattr(e, 'message'):

@@ -16,7 +16,6 @@ app = FastAPI(
 
 # 全局异常处理中间件
 app.middleware("http")(ExceptionMiddleware)
-
 # 认证中间件
 app.middleware("http")(AuthMiddleware)
 # 日志中间件

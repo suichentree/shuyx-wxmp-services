@@ -77,7 +77,7 @@ class MpUserQuestionEbbinghausTrackService(BaseService[MpUserQuestionEbbinghausT
         return question_ids
 
 
-    def update_question_track(self,db_session: Session,user_id: int,question_id: int,question_type: int,is_correct: int):
+    def update_question_track(self,db_session: Session,user_id: int,exam_id: int,question_id: int,question_type: int,is_correct: int):
         """
         更新题目答题轨迹记录
         :param db_session: 数据库会话
@@ -125,6 +125,7 @@ class MpUserQuestionEbbinghausTrackService(BaseService[MpUserQuestionEbbinghausT
             # 如果不存在轨迹记录，创建新记录
             self.dao_instance.add(db_session, dict_data=MpUserQuestionEbbinghausTrackModel(
                 user_id=user_id,
+                exam_id=exam_id,
                 question_id=question_id,
                 question_type=question_type,
                 correct_count=1 if is_correct else 0,    # 答对次数
@@ -219,6 +220,17 @@ class MpUserQuestionEbbinghausTrackService(BaseService[MpUserQuestionEbbinghausT
             )
 
 
+    def find_missed_question_ids(self, db_session: Session, exam_id: int) -> List[MpUserQuestionEbbinghausTrackModel]:
+        """
+        从轨迹表中查询用户已做过且错过的题目ID列表
+        """
+
+        question_ids: List[dict] = self.dao_instance.get_list_by_execute_sql(
+            db_session,
+            sql="SELECT * FROM mp_user_question_ebbinghaus_track WHERE exam_id = :exam_id AND error_count > 0 ",
+            params={"exam_id": exam_id},
+        )
+        return [ MpUserQuestionEbbinghausTrackModel(**item) for item in question_ids]
 
 
 
