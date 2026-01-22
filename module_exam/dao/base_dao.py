@@ -17,6 +17,87 @@ class BaseDao(Generic[ModelType]):
         """
         self.model = model
 
+    def _build_filter_conditions(self, filters: Dict):
+        """
+        构建查询条件，支持高级查询
+        :param filters: 查询条件字典
+            - 等值查询: {"field": value}
+            - 模糊查询: {"field__like": value}
+            - 大于查询: {"field__gt": value}
+            - 小于查询: {"field__lt": value}
+            - 大于等于: {"field__gte": value}
+            - 小于等于: {"field__lte": value}
+            - 包含查询: {"field__in": [value1, value2]}
+            - 为空查询: {"field__isnull": True/False}
+        :return: 过滤条件列表
+        """
+        conditions = []
+        if not filters:
+            return conditions
+
+        # 遍历查询条件字典，构建查询条件
+        for field, value in filters.items():
+            # 若字段值为None，则跳过
+            if value is None:
+                continue
+
+            # 若字典字段包含__，则为特殊查询类型，如模糊查询、范围查询等
+            if "__" in field:
+                # 将字典键按“__”拆分为字段名和查询类型
+                field_name, query_type = field.split("__", 1)
+
+                # 如果字段不存在于模型类中，则跳过
+                if not hasattr(self.model, field_name):
+                    continue
+
+                # 获取模型类中对应的字段对象
+                model_field = getattr(self.model, field_name)
+
+                # 根据查询类型构建不同的条件
+                if query_type == "like":
+                    # 模糊查询
+                    conditions.append(model_field.like(f"%{value}%"))
+                elif query_type == "gt":
+                    # 大于
+                    conditions.append(model_field > value)
+                elif query_type == "lt":
+                    # 小于
+                    conditions.append(model_field < value)
+                elif query_type == "gte":
+                    # 大于等于
+                    conditions.append(model_field >= value)
+                elif query_type == "lte":
+                    # 小于等于
+                    conditions.append(model_field <= value)
+                elif query_type == "in":
+                    # 包含查询
+                    if isinstance(value, (list, tuple)):
+                        conditions.append(model_field.in_(value))
+                elif query_type == "isnull":
+                    # 为空查询
+                    if value:
+                        conditions.append(model_field.is_(None))
+                    else:
+                        conditions.append(model_field.is_not(None))
+            # 处理普通查询
+            elif hasattr(self.model, field):
+                # 获取模型类中对应的字段对象
+                model_field = getattr(self.model, field)
+                # 若值为bool类型
+                if isinstance(value, bool):
+                    if value:
+                        # True，表示该查询字段为非空值
+                        conditions.append(model_field.is_not(None))
+                    else:
+                        # False，表示该查询字段为空值
+                        conditions.append(model_field.is_(None))
+                # 若值为非None
+                elif value is not None:
+                    # 设置查询条件为该字段为value
+                    conditions.append(model_field == value)
+
+        return conditions
+
     def get_by_id(self, db_session: Session, id: int) -> Optional[ModelType]:
         """
         根据ID获取单条记录（注意包含字段id）
@@ -29,6 +110,18 @@ class BaseDao(Generic[ModelType]):
         # 从查询结果对象中获取单条记录（如果存在）
         return result.scalar_one_or_none()
 
+    def get_list_by_ids(self, db_session: Session, ids: List[int]) -> List[ModelType]:
+        """
+        根据ID列表获取多条记录（注意包含字段id）
+            ids: 记录ID列表
+        """
+        # 构建sqlalchemy查询语句
+        sql = select(self.model).where(self.model.id.in_(ids))
+        # 执行查询语句并返回查询结果对象
+        result = db_session.execute(sql)
+        # 从查询结果对象中获取多条记录（如果存在）
+        return result.scalars().all()
+
     def get_total_by_filters(self,db_session: Session,filters: Dict = None) -> int:
         """
         根据条件获取记录总数
@@ -36,20 +129,10 @@ class BaseDao(Generic[ModelType]):
         """
         # 构建 count(*) 查询，避免全量加载导致的性能问题
         sql = select(func.count()).select_from(self.model)
-        # 动态构建查询条件 and 查询，支持查询空值，非空值查询
-        if filters:
-            for field, value in filters.items():
-                if hasattr(self.model, field):
-                    if isinstance(value, bool):
-                        if value:
-                            # True，表示该查询字段为非空值
-                            sql = sql.where(getattr(self.model, field).is_not(None))
-                        else:
-                            # False，表示该查询字段为空值
-                            sql = sql.where(getattr(self.model, field).is_(None))
-                    elif value is not None:
-                        # 设置查询条件为该字段为value
-                        sql = sql.where(getattr(self.model, field) == value)
+        # 动态构建查询条件 and 查询
+        conditions = self._build_filter_conditions(filters)
+        if conditions:
+            sql = sql.where(*conditions)
 
         # 执行查询语句并返回查询结果对象
         result = db_session.execute(sql)
@@ -64,20 +147,10 @@ class BaseDao(Generic[ModelType]):
         """
         # 初始化查询对象，选择模型的所有字段
         sql = select(self.model)
-        # 动态构建查询条件 and 查询，支持查询空值，非空值查询
-        if filters:
-            for field, value in filters.items():
-                if hasattr(self.model, field):
-                    if isinstance(value, bool):
-                        if value:
-                            # True，表示该查询字段为非空值
-                            sql = sql.where(getattr(self.model, field).is_not(None))
-                        else:
-                            # False，表示该查询字段为空值
-                            sql = sql.where(getattr(self.model, field).is_(None))
-                    elif value is not None:
-                        # 设置查询条件为该字段为value
-                        sql = sql.where(getattr(self.model, field) == value)
+        # 动态构建查询条件 and 查询
+        conditions = self._build_filter_conditions(filters)
+        if conditions:
+            sql = sql.where(*conditions)
 
         # 动态构建排序条件
         if sort_by:
@@ -111,20 +184,12 @@ class BaseDao(Generic[ModelType]):
 
         # 初始化查询对象，选择模型的所有字段
         sql = select(self.model)
-        # 动态构建查询条件 and 查询，支持查询空值，非空值查询
-        if filters:
-            for field, value in filters.items():
-                if hasattr(self.model, field):
-                    if isinstance(value, bool):
-                        if value:
-                            # True，表示该查询字段为非空值
-                            sql = sql.where(getattr(self.model, field).is_not(None))
-                        else:
-                            # False，表示该查询字段为空值
-                            sql = sql.where(getattr(self.model, field).is_(None))
-                    elif value is not None:
-                        # 设置查询条件为该字段为value
-                        sql = sql.where(getattr(self.model, field) == value)
+
+        # 动态构建查询条件 and 查询
+        conditions = self._build_filter_conditions(filters)
+        if conditions:
+            sql = sql.where(*conditions)
+
         # 动态构建排序条件
         if sort_by:
             # 遍历排序字段列表
@@ -157,20 +222,11 @@ class BaseDao(Generic[ModelType]):
 
         # 初始化查询对象，选择模型的所有字段
         sql = select(self.model)
-        # 动态构建查询条件 and 查询，支持查询空值，非空值查询
-        if filters:
-            for field, value in filters.items():
-                if hasattr(self.model, field):
-                    if isinstance(value, bool):
-                        if value:
-                            # True，表示该查询字段为非空值
-                            sql = sql.where(getattr(self.model, field).is_not(None))
-                        else:
-                            # False，表示该查询字段为空值
-                            sql = sql.where(getattr(self.model, field).is_(None))
-                    elif value is not None:
-                        # 设置查询条件为该字段为value
-                        sql = sql.where(getattr(self.model, field) == value)
+
+        # 动态构建查询条件 and 查询
+        conditions = self._build_filter_conditions(filters)
+        if conditions:
+            sql = sql.where(*conditions)
 
         # 动态构建排序条件
         if sort_by:

@@ -10,6 +10,7 @@ class MpUserDTO(BaseModel):
 
     id:Optional[int] = None          # Optional[int] = None 表示类型可以是int,也可以是 None，默认值为 None
     name:Optional[str] = None
+    nick_name:Optional[str] = None
     password:Optional[str] = None
     phone:Optional[str] = None
     wx_openid:Optional[str] = None
@@ -27,3 +28,21 @@ class MpUserDTO(BaseModel):
     # 将sqlalchemy模型转换为pydantic模型的配置
     model_config = ConfigDict(from_attributes=True)
 
+class MpUserCommonDTO(BaseModel):
+
+    id:Optional[int] = None          # Optional[int] = None 表示类型可以是int,也可以是 None，默认值为 None
+    name:Optional[str] = None
+    nick_name:Optional[str] = None
+    phone:Optional[str] = None
+    head_url:Optional[str] = None
+    age:Optional[int] = None
+    address:Optional[str] = None
+    gender:Optional[int] = None
+    email:Optional[str] = None
+    login_count:Optional[int] = None
+    is_admin: Optional[int] = None
+    last_login_time:Optional[datetime] = None
+    create_time:Optional[datetime] = None
+
+    # 将sqlalchemy模型转换为pydantic模型的配置
+    model_config = ConfigDict(from_attributes=True)

@@ -9,7 +9,7 @@ from config.database_config import get_db_session
 from config.log_config import logger
 from module_exam.dto.mp_exam_dto import MpExamDTO, MpExamCommonDTO
 from module_exam.dto.mp_option_dto import MpOptionDTO
-from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO
+from module_exam.dto.mp_question_dto import MpQuestionDTO
 from module_exam.dto.mp_user_exam_dto import MpUserExamDTO
 from module_exam.dto.mp_user_exam_option_dto import MpUserExamOptionDTO
 from module_exam.model.mp_exam_model import MpExamModel
@@ -32,16 +32,27 @@ MpUserExamOptionService_instance = MpUserExamOptionService()
 """
 获取测试列表信息
 """
-@router.get("/getExamList", response_model=ResponseDTO[List[MpExamCommonDTO]])
-def getExamList(page_num:int=1, page_size:int=10,db_session: Session = Depends(get_db_session)):
-    logger.info(f'/mp/exam/getExamList, page_num = {page_num}, page_size = {page_size}')
+@router.post("/getExamList")
+def getExamList(page_num:int=Body(...), page_size:int=Body(...),exam_name:str=Body(None),exam_tag:str=Body(None),db_session: Session = Depends(get_db_session)):
+    logger.info(f'/mp/exam/getExamList, page_num = {page_num}, page_size = {page_size}, exam_name = {exam_name}, exam_tag = {exam_tag}')
+    # 获取所有考试标签
+    tagList:List[dict] = MpExamService_instance.get_exam_tags(db_session)
 
-    # 分页查询，状态正常的考试信息
-    dto_dict = MpExamDTO(status=0).model_dump()
-    # 获取列表查询结果
-    result:List[MpExamModel] = MpExamService_instance.get_page_list_by_filters(db_session, page_num=page_num, page_size=page_size, filters=dto_dict)
+    # 构建查询条件
+    query_dict = MpExamModel(status=0).to_dict()
+    if exam_name and exam_name.strip() != "":
+        query_dict['name__like'] = exam_name
+    if exam_tag and exam_tag.strip() != "":
+        query_dict['tag'] = exam_tag
+    # 分页查询
+    print(query_dict)
+    examList:List[MpExamModel] = MpExamService_instance.get_page_list_by_filters(db_session, page_num=page_num, page_size=page_size, filters=query_dict)
+
     # 响应结果
-    return ResponseUtil.success(code=200, message="success", data=result)
+    return ResponseUtil.success(code=200, message="success", data={
+        "tags": tagList,
+        "exams": [MpExamCommonDTO.model_validate(exam) for exam in examList]
+    })
 
 
 """

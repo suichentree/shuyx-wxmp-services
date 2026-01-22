@@ -16,4 +16,9 @@ class MpExamService(BaseService[MpExamModel]):
 
     # 可以根据业务需求添加自定义方法
 
-
+    def get_exam_tags(self,db_session):
+        """
+        获取所有考试标签
+        """
+        result:List[dict] = self.dao_instance.get_list_by_execute_sql(db_session, "SELECT DISTINCT tag FROM mp_exam WHERE status = 0")
+        return result

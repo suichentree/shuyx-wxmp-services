@@ -15,6 +15,7 @@ class MpUserModel(myBaseModel):
 
     id: Mapped[int] = MappedColumn(Integer, primary_key=True, autoincrement=True, comment='用户id')
     name: Mapped[str] = MappedColumn(String(500), nullable=False, comment='用户名')
+    nick_name: Mapped[str] = MappedColumn(String(500), nullable=False, comment='用户昵称')
     password: Mapped[str] = MappedColumn(String(500), nullable=False, comment='用户密码')
     phone: Mapped[str] = MappedColumn(String(20), unique=True, nullable=False, comment='用户手机号')
     wx_openid: Mapped[str] = MappedColumn(String(500), unique=True, nullable=False, comment='用户微信openid')

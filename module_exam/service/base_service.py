@@ -24,6 +24,13 @@ class BaseService(Generic[ModelType]):
         """
         return self.dao.get_by_id(db_session, id)
 
+    def get_list_by_ids(self, db_session: Session, ids: List[int]) -> List[ModelType]:
+        """
+        根据ID列表获取多条记录（注意包含字段id）
+            ids: 记录ID列表
+        """
+        return self.dao.get_list_by_ids(db_session, ids)
+
     def get_total_by_filters(self, db_session: Session, filters: Dict = None) -> int:
         """
         根据条件获取记录总数

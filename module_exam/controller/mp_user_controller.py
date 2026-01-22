@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from config.database_config import get_db_session
 from config.log_config import logger
-from module_exam.dto.mp_user_dto import MpUserDTO
+from module_exam.dto.mp_user_dto import MpUserDTO, MpUserCommonDTO
 from module_exam.service.mp_user_service import MpUserService
 from utils.response_util import ResponseUtil
 
@@ -60,24 +60,25 @@ def phoneRegister(phone:str,password:str,db_session: Session = Depends(get_db_se
 @router.post("/saveUserInfo")
 def saveUserInfo(userInfo:MpUserDTO,db_session:Session = Depends(get_db_session)):
         logger.info(f'/mp/user/saveUserInfo, userInfo = {userInfo}')
+        # 事务提交
+        with db_session.begin():
+            # dto 转换为 dict
+            updateuser_dict = userInfo.model_dump(exclude_unset=True)
 
-        # dto 转换为 dict
-        updateuser_dict = userInfo.model_dump(exclude_unset=True)
+            # 调用服务层方法，更新用户信息
+            result = MpUserService_instance.update_by_id(db_session,id=userInfo.id,update_data=updateuser_dict),
+            if result is False:
+                return ResponseUtil.error(data={"message": "更新失败"})
 
-        # 调用服务层方法，更新用户信息
-        result = MpUserService_instance.update_by_id(db_session,id=userInfo.id,update_data=updateuser_dict),
-        if result is False:
-            return ResponseUtil.error(data={"message": "更新失败"})
-
-        return ResponseUtil.success(data={"message": "更新成功"})
+            return ResponseUtil.success(data={"message": "更新成功"})
 
 @router.post("/getUserInfo")
-def getUserInfo(userId:int = Body(None),db_session:Session = Depends(get_db_session)):
+def getUserInfo(userId:int = Body(None,embed=True),db_session:Session = Depends(get_db_session)):
         logger.info(f'/mp/user/getUserInfo, userId = {userId}')
         # 调用服务层方法，查询用户信息
-        result = MpUserService_instance.get_one_by_filters(db_session,filters={"id": userId})
+        result = MpUserService_instance.get_by_id(db_session,id=userId)
         if result is None:
             return ResponseUtil.error(data={"message": "用户不存在"})
 
         # 若result为空，则返回空字典。不为空则返回result
-        return ResponseUtil.success(data=result)
+        return ResponseUtil.success(data=MpUserCommonDTO.model_validate(result))
