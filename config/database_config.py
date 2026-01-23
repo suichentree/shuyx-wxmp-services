@@ -9,7 +9,7 @@ MYSQL_DATABASE_URL = "mysql+pymysql://root:123456@localhost:3306/shuyx_db"
 myEngine = create_engine(MYSQL_DATABASE_URL,
     pool_size=10,            # 连接池大小
     pool_timeout=30,        # 池中没有线程最多等待的时间，否则报错
-    echo=True              # 是否在控制台打印相关语句等
+    echo=False              # 是否在控制台打印相关语句等
     )
 
 # 创建会话工厂对象mySessionLocal

@@ -58,7 +58,7 @@ def phoneRegister(phone:str,password:str,db_session: Session = Depends(get_db_se
         return ResponseUtil.error(data={"isRegister": 0, "message": "注册失败"})
 
 @router.post("/saveUserInfo")
-def saveUserInfo(userInfo:MpUserDTO,db_session:Session = Depends(get_db_session)):
+def saveUserInfo(userInfo:MpUserCommonDTO,db_session:Session = Depends(get_db_session)):
         logger.info(f'/mp/user/saveUserInfo, userInfo = {userInfo}')
         # 事务提交
         with db_session.begin():
