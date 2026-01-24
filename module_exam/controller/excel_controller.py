@@ -2,13 +2,10 @@ from fastapi import APIRouter, Body, Depends, UploadFile, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.params import File
 import pandas as pd
-from typing import List, Optional
-from pydantic import BaseModel
 import os
 from datetime import datetime
 
 from config.database_config import get_db_session
-from config.log_config import logger
 from module_exam.dto.mp_exam_dto import MpExamDTO
 from module_exam.dto.mp_option_dto import MpOptionDTO
 from module_exam.dto.mp_question_dto import  MpQuestionDTO
@@ -20,7 +17,7 @@ from module_exam.service.mp_user_exam_option_service import MpUserExamOptionServ
 from utils.response_util import ResponseUtil
 
 # 创建路由实例
-router = APIRouter(prefix='/mp/exam2', tags=['mp_exam2接口'])
+router = APIRouter(prefix='/mp/excel', tags=['mp_excel接口'])
 # 创建服务实例
 MpExamService_instance = MpExamService()
 MpOptionService_instance = MpOptionService()
