@@ -7,13 +7,7 @@ from sqlalchemy.orm import Session
 from config.database_config import get_db_session
 
 from config.log_config import logger
-from module_exam.dto.mp_exam_dto import MpExamDTO
-from module_exam.dto.mp_option_dto import MpOptionDTO
-from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO, MpQuestionOptionTraceDTO
-from module_exam.dto.mp_user_exam_dto import MpUserExamDTO
-from module_exam.dto.mp_user_exam_option_dto import MpUserExamOptionDTO
-from module_exam.model.mp_exam_model import MpExamModel
-from module_exam.model.mp_user_exam_model import MpUserExamModel
+from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionOptionTraceDTO
 from module_exam.model.mp_user_question_ebbinghaus_track import MpUserQuestionEbbinghausTrackModel
 from module_exam.service.mp_exam_service import MpExamService
 from module_exam.service.mp_option_service import MpOptionService

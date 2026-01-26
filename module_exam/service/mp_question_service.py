@@ -18,6 +18,18 @@ class MpQuestionService(BaseService[MpQuestionModel]):
 
     # 可以根据业务需求添加自定义方法
 
+    def get_all_questionids(self, db_session, exam_id: int) -> List[int]:
+        """
+        获取指定考试下的所有题目ID列表
+        :param exam_id: 考试ID
+        :return: 包含随机题目ID的列表
+        """
+        sql = f"SELECT id FROM mp_question WHERE exam_id = {exam_id}"
+        result = self.dao_instance.get_list_by_execute_sql(db_session, sql=sql)
+        # 提取ID列表
+        question_ids = [item[0] for item in result]
+        return question_ids
+
     def get_questions_with_options_by_questionids(self, db_session, question_ids: List[int]) -> List[MpQuestionOptionDTO]:
         """
         根据题目ID列表获取指定问题和对应的选项
