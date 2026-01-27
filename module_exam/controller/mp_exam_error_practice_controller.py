@@ -18,7 +18,7 @@ from module_exam.service.mp_user_question_ebbinghaus_track_service import MpUser
 from utils.response_util import ResponseUtil, ResponseDTO
 
 # 创建路由实例
-router = APIRouter(prefix='/mp/exam/errorPractice', tags=['mp_exam_errorPractice接口'])
+router = APIRouter(prefix='/mp/exam/error/practice', tags=['mp_exam_errorPractice接口'])
 # 创建服务实例
 MpExamService_instance = MpExamService()
 MpOptionService_instance = MpOptionService()
@@ -36,7 +36,7 @@ MpUserQuestionEbbinghausTrackService_instance = MpUserQuestionEbbinghausTrackSer
 """
 @router.post("/getQuestion", response_model=ResponseDTO)
 def getQuestion(exam_id: int = Body(..., embed=True), db_session: Session = Depends(get_db_session)):
-    logger.info(f"/mp/exam/errorPractice/getQuestion, exam_id={exam_id}")
+    logger.info(f"/mp/exam/error/practice/getQuestion, exam_id={exam_id}")
 
     # 开启事务管理
     with db_session.begin():

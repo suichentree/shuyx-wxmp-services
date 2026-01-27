@@ -27,7 +27,7 @@ class MpQuestionService(BaseService[MpQuestionModel]):
         sql = f"SELECT id FROM mp_question WHERE exam_id = {exam_id}"
         result = self.dao_instance.get_list_by_execute_sql(db_session, sql=sql)
         # 提取ID列表
-        question_ids = [item[0] for item in result]
+        question_ids = [item['id'] for item in result]
         return question_ids
 
     def get_questions_with_options_by_questionids(self, db_session, question_ids: List[int]) -> List[MpQuestionOptionDTO]:

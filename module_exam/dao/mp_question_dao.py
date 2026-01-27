@@ -26,7 +26,7 @@ class MpQuestionDao(BaseDao[MpQuestionModel]):
         ).where(
             MpQuestionModel.exam_id == exam_id,
             MpQuestionModel.status == 0
-        )
+        ).order_by(MpOptionModel.id)
 
         return db_session.execute(sql).all()
 
@@ -44,7 +44,7 @@ class MpQuestionDao(BaseDao[MpQuestionModel]):
         ).where(
             MpQuestionModel.id.in_(question_ids),
             MpQuestionModel.status == 0
-        )
+        ).order_by(MpOptionModel.id)
         return db_session.execute(sql).all()
 
     def get_one_questions_with_options(self, db_session: Session, question_id: int):
@@ -61,6 +61,6 @@ class MpQuestionDao(BaseDao[MpQuestionModel]):
         ).where(
             MpQuestionModel.id == question_id,
             MpQuestionModel.status == 0
-        )
+        ).order_by(MpOptionModel.id)
 
         return db_session.execute(sql).all()

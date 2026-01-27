@@ -1,4 +1,3 @@
-from datetime import datetime
 import random
 from typing import List
 
@@ -8,14 +7,7 @@ from sqlalchemy.orm import Session
 from config.database_config import get_db_session
 
 from config.log_config import logger
-from module_exam.dto.mp_exam_dto import MpExamDTO
-from module_exam.dto.mp_option_dto import MpOptionDTO
-from module_exam.dto.mp_question_dto import MpQuestionOptionDTO, MpQuestionDTO
-from module_exam.dto.mp_user_exam_dto import MpUserExamDTO
-from module_exam.dto.mp_user_exam_option_dto import MpUserExamOptionDTO
-from module_exam.model.mp_exam_model import MpExamModel
-from module_exam.model.mp_user_exam_model import MpUserExamModel
-from module_exam.model.mp_user_exam_option_model import MpUserExamOptionModel
+from module_exam.dto.mp_question_dto import MpQuestionOptionDTO
 from module_exam.service.mp_exam_service import MpExamService
 from module_exam.service.mp_option_service import MpOptionService
 from module_exam.service.mp_question_service import MpQuestionService
@@ -50,28 +42,16 @@ def getQuestion(exam_id: int = Body(..., embed=True), db_session: Session = Depe
 
         # 随机获取题目
         all_questionids: List[int] = MpQuestionService_instance.get_all_questionids(db_session, exam_id=exam_id)
-        random_questionid: int = random.sample(all_questionids, num)
+
+        print(all_questionids)
+        random_questionids: List[int] = random.sample(all_questionids, num)
 
         # 根据id获取题目
-        question_option_dto: List[MpQuestionOptionDTO] = MpQuestionService_instance.get_questions_with_options_by_questionids(db_session, question_ids=random_questionid)
-        for item in question_option_dto:
-            # 创建MpQuestionOptionTraceDTO实例
-            trace_item = MpQuestionOptionTraceDTO(
-                question=item.question,
-                options=item.options,
-                error_count=0,
-                correct_count=0,
-                total_count=0
-            )
-            trace_item.error_count = next((track.error_count for track in errorQuestions if track.question_id == item.question.id), 0)
-            trace_item.correct_count = next((track.correct_count for track in errorQuestions if track.question_id == item.question.id), 0)
-            trace_item.total_count = next((track.total_count for track in errorQuestions if track.question_id == item.question.id), 0)
-            # 添加到结果列表
-            question_option_trace_dto.append(trace_item)
+        question_option_dto: List[MpQuestionOptionDTO] = MpQuestionService_instance.get_questions_with_options_by_questionids(db_session, question_ids=random_questionids)
 
         # 返回结果
         return ResponseUtil.success(code=200, message="success", data={
-            "questions": [item.model_dump() for item in question_option_trace_dto],
+            "questions": [item.model_dump() for item in question_option_dto],
         })
 
 
