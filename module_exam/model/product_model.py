@@ -17,14 +17,13 @@ class ProductModel(myBaseModel):
 
     id: Mapped[int] = MappedColumn(Integer, primary_key=True, autoincrement=True, comment='商品id')
     name: Mapped[str] = MappedColumn(String(200), nullable=False, comment='商品名称')
+    cover_image: Mapped[str] = MappedColumn(String(500), nullable=True, comment='商品封面图')
     description: Mapped[str] = MappedColumn(String(1000), nullable=True, comment='商品描述')
     current_price: Mapped[Decimal] = MappedColumn(DECIMAL(10, 2), nullable=False, comment='商品现价')
     original_price: Mapped[Decimal] = MappedColumn(DECIMAL(10, 2), nullable=True, comment='商品原价')
     type_name: Mapped[str] = MappedColumn(String(100), nullable=False, comment='商品类型名称')
     type_code: Mapped[str] = MappedColumn(String(50), unique=True, nullable=False, comment='商品类型编码，如：EXAM, COURSE, VIP')
-    cover_image: Mapped[str] = MappedColumn(String(500), nullable=True, comment='商品封面图')
     status: Mapped[int] = MappedColumn(Integer, default=1, comment='商品状态 1上架 0下架')
-    is_free: Mapped[bool] = MappedColumn(Boolean, default=False, comment='是否免费')
     create_time: Mapped[datetime] = MappedColumn(DateTime, comment='创建时间', default=func.now())
     update_time: Mapped[datetime] = MappedColumn(DateTime, comment='更新时间', default=func.now(), onupdate=func.now())
 
@@ -35,3 +34,9 @@ class ProductModel(myBaseModel):
         Index('index_status', 'status'),
         Index('index_is_free', 'is_free'),
     )
+
+    @property
+    def is_free(self):
+        """通过现价判断是否免费"""
+        return self.current_price == 0
+

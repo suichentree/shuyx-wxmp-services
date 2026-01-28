@@ -20,7 +20,7 @@ class OrderModel(myBaseModel):
     order_no: Mapped[str] = MappedColumn(String(64), unique=True, nullable=False, comment='订单号')
     # 订单所属用户
     user_id: Mapped[int] = MappedColumn(Integer, ForeignKey('mp_user.id'), nullable=False, comment='用户id')
-
+    # 订单状态
     status: Mapped[str] = MappedColumn(String(20), default='PENDING', comment='订单状态 PENDING-待支付，PAID-已支付，CANCELLED-已取消，REFUNDED-已退款')
     total_amount: Mapped[Decimal] = MappedColumn(DECIMAL(10, 2), nullable=False, comment='订单总金额')
     pay_amount: Mapped[Decimal] = MappedColumn(DECIMAL(10, 2), nullable=False, comment='实际支付金额')
