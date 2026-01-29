@@ -20,12 +20,12 @@ class OrderService(BaseService[OrderModel]):
     def create_order(self, db_session, order_data, order_items):
         """创建订单及订单项"""
         # 创建订单
-        order = self.dao_instance.create(db_session, order_data)
+        order = self.dao_instance.add(db_session, order_data)
 
         # 创建订单项
         for item in order_items:
             item.order_id = order.id
-            self.order_product_dao.create(db_session, item)
+            self.order_product_dao.add(db_session, item)
 
         return order
 

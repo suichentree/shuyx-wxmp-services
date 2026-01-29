@@ -2,9 +2,7 @@ from datetime import datetime, date
 
 from fastapi import HTTPException
 from pydantic import BaseModel,TypeAdapter
-from typing import Any, List, Type, TypeVar, Union, cast
-
-from pydantic_core import ValidationError
+from typing import List, Type, TypeVar, Union, cast
 from sqlalchemy import inspect
 from sqlalchemy.orm import DeclarativeBase
 from starlette import status

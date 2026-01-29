@@ -22,3 +22,11 @@ class OrderDTO(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class OrderCreateDTO(BaseModel):
+    """订单创建DTO"""
+    user_id: int
+    product_id: int
+    total_amount: Decimal
+    description: str
+    create_time: Optional[datetime] = datetime.now()
+    update_time: Optional[datetime] = datetime.now()

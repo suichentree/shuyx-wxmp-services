@@ -29,7 +29,7 @@ class UserProductService(BaseService[UserProductModel]):
             'expire_time': expire_time
         }
 
-        return self.dao_instance.create(db_session, user_product_data)
+        return self.dao_instance.add(db_session, user_product_data)
 
     def check_user_product_access(self, db_session, user_id: int, product_id: int):
         """检查用户是否有商品访问权限"""
