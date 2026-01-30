@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Body, Depends
@@ -5,13 +6,12 @@ from sqlalchemy.orm import Session
 
 from config.database_config import get_db_session
 from config.log_config import logger
-from module_exam.dto.product_dto import ProductDTO
-from module_exam.dto.order_dto import OrderDTO, OrderCreateDTO
-from module_exam.dto.order_product_dto import OrderProductCreateDTO
-from module_exam.service.order_product_service import OrderProductService
-from module_exam.service.product_service import ProductService
-from module_exam.service.order_service import OrderService
-from module_exam.service.user_product_service import UserProductService
+from module_mall.dto.order_dto import OrderDTO
+from module_mall.model.order_model import OrderModel
+from module_mall.model.order_product_model import OrderProductModel
+from module_mall.service.order_product_service import OrderProductService
+from module_mall.service.product_service import ProductService
+from module_mall.service.order_service import OrderService
 from utils.response_util import ResponseUtil
 from utils.common_util import CommonUtil
 
@@ -22,7 +22,6 @@ router = APIRouter(prefix='/api/order', tags=['订单接口'])
 product_service = ProductService()
 order_service = OrderService()
 order_product_service = OrderProductService()
-user_product_service = UserProductService()
 
 """
 购物流程
@@ -35,24 +34,20 @@ user_product_service = UserProductService()
 """
 
 @router.post("/createOrder")
-def create_order(
-        user_id: int = Body(...),
-        product_ids: List[int] = Body(...),
-        db_session: Session = Depends(get_db_session)
-):
+def create_order(userId: int = Body(...),productIds: List[int] = Body(...),db_session: Session = Depends(get_db_session)):
     """
     创建订单
     """
     with db_session.begin():
-        logger.info(f'/api/order/createOrder, user_id={user_id}, product_ids={product_ids}')
+        logger.info(f'/api/order/createOrder, userId={userId}, productIds={productIds}')
 
-        if not product_ids:
+        if not productIds:
             return ResponseUtil.error(message="请选择要购买的商品")
 
         # 获取商品信息
         products = []
-        total_amount = 0
-        for product_id in product_ids:
+        total_amount = Decimal('0')
+        for product_id in productIds:
             product = product_service.get_by_id(db_session, product_id)
             if not product:
                 return ResponseUtil.error(message=f"商品ID {product_id} 不存在")
@@ -60,29 +55,28 @@ def create_order(
                 return ResponseUtil.error(message=f"商品 {product.name} 已下架")
 
             products.append(product)
-            total_amount += float(product.current_price)
+            total_amount += Decimal(str(product.current_price))
 
-        # 生成订单号
-        order_no = CommonUtil.generate_id()
+            # 生成订单号
+        order_no = CommonUtil.generate_order_no()
 
         # 创建订单数据
-        order_data = OrderCreateDTO(
-            user_id=user_id,
+        order_data = OrderModel(
+            user_id=userId,  # 用户ID
             order_no=order_no,  # 订单号
             total_amount=total_amount,   # 订单总金额
             pay_amount=total_amount,  # 实际支付金额，这里可以添加优惠券逻辑
+            status="PENDING",     # 订单状态：PENDING(待支付), PAID(已支付), REFUND(已退款), CANCELLED(已取消)
         )
 
-        # 创建订单项数据
-        order_items = []
+        # 创建订单商品的数据
+        order_items: List[OrderProductModel] = []
         for product in products:
-            order_item = OrderProductCreateDTO(
+            order_item = OrderProductModel(
                 order_id=0,  # 临时值，会在创建订单后更新
                 product_id=product.id,
                 product_name=product.name,
                 product_price=product.current_price,
-                quantity=1,
-                subtotal=product.current_price
             )
             order_items.append(order_item)
 
@@ -211,13 +205,14 @@ def confirm_order_payment(
         # 为用户添加商品
         order_items = order_product_service.get_by_order_id(db_session, order_id)
         for item in order_items:
-            user_product_service.add_user_product(
-                db_session,
-                user_id=order.user_id,
-                product_id=item.product_id,
-                source_type='PURCHASE',
-                source_id=order_id
-            )
+            pass
+            # user_product_service.add_user_product(
+            #     db_session,
+            #     user_id=order.user_id,
+            #     product_id=item.product_id,
+            #     source_type='PURCHASE',
+            #     source_id=order_id
+            # )
 
         return ResponseUtil.success(
             code=200,

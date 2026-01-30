@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from module_exam.dao.mp_user_question_ebbinghaus_track_dao import MpUserQuestionEbbinghausTrackDao
 from module_exam.model.mp_user_question_ebbinghaus_track import MpUserQuestionEbbinghausTrackModel
-from module_exam.service.base_service import BaseService
+from base.base_service import BaseService
 
 # 继承Service类，专注于业务操作, 可添加自定义方法
 class MpUserQuestionEbbinghausTrackService(BaseService[MpUserQuestionEbbinghausTrackModel]):

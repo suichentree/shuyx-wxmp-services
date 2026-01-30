@@ -1,9 +1,8 @@
-from typing import Generic, TypeVar, Type, List, Optional, Dict, Any
+from typing import Generic, TypeVar, List, Optional, Dict, Any
 
-from sqlalchemy import text
 from sqlalchemy.orm import Session
-from module_exam.dao.base_dao import BaseDao
-from module_exam.model.base_model import myBaseModel
+from base.base_dao import BaseDao
+from base.base_model import myBaseModel
 
 # 定义泛型类型变量，约束为SQLAlchemy的Base模型
 ModelType = TypeVar("ModelType", bound=myBaseModel)

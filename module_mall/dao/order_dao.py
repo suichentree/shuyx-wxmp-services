@@ -1,5 +1,5 @@
-from module_exam.model.order_model import OrderModel
-from module_exam.dao.base_dao import BaseDao
+from module_mall.model.order_model import OrderModel
+from base.base_dao import BaseDao
 
 class OrderDao(BaseDao[OrderModel]):
     def __init__(self):

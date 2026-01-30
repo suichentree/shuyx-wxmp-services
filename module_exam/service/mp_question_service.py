@@ -4,7 +4,7 @@ from module_exam.dao.mp_question_dao import MpQuestionDao
 from module_exam.dto.mp_option_dto import MpOptionDTO
 from module_exam.dto.mp_question_dto import MpQuestionDTO, MpQuestionOptionDTO
 from module_exam.model.mp_question_model import MpQuestionModel
-from module_exam.service.base_service import BaseService
+from base.base_service import BaseService
 
 # 继承Service类，专注于业务操作, 可添加自定义方法
 class MpQuestionService(BaseService[MpQuestionModel]):

@@ -13,7 +13,6 @@ from module_exam.controller.mp_exam_sequence_practice_controller import router a
 from module_exam.controller.mp_exam_random_practice_controller import router as mp_exam_random_practice_router
 
 
-
 # 创建总路由实例
 api_router = APIRouter()
 

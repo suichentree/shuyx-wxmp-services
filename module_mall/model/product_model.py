@@ -2,11 +2,11 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Integer, String, DateTime, func, Index, DECIMAL, Boolean
+from sqlalchemy import Integer, String, DateTime, func, Index, DECIMAL
 from sqlalchemy.orm import Mapped, MappedColumn
 
 # 导入公共基类
-from module_exam.model.base_model import myBaseModel
+from base.base_model import myBaseModel
 
 class ProductModel(myBaseModel):
     """
@@ -30,9 +30,10 @@ class ProductModel(myBaseModel):
     # 添加索引
     __table_args__ = (
         Index('index_id', 'id'),
-        Index('index_product_type_id', 'product_type_id'),
+        Index('index_name', 'name'),
+        Index('index_type_name', 'type_name'),
+        Index('index_type_code', 'type_code'),
         Index('index_status', 'status'),
-        Index('index_is_free', 'is_free'),
     )
 
     @property

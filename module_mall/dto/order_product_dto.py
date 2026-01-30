@@ -16,12 +16,3 @@ class OrderProductDTO(BaseModel):
     create_time: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
-
-class OrderProductCreateDTO(BaseModel):
-    """创建订单商品DTO"""
-    order_id: int
-    product_id: int
-    product_name: str
-    product_price: Decimal
-    quantity: int = 1
-    subtotal: Decimal

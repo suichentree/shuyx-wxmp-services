@@ -1,10 +1,11 @@
-from typing import List
 from datetime import datetime
+from typing import List
 
-from module_exam.dao.order_dao import OrderDao
-from module_exam.dao.order_product_dao import OrderProductDao
-from module_exam.model.order_model import OrderModel
-from module_exam.service.base_service import BaseService
+from module_mall.dao.order_dao import OrderDao
+from module_mall.dao.order_product_dao import OrderProductDao
+from module_mall.model.order_model import OrderModel
+from module_mall.model.order_product_model import OrderProductModel
+from base.base_service import BaseService
 
 
 class OrderService(BaseService[OrderModel]):
@@ -15,17 +16,19 @@ class OrderService(BaseService[OrderModel]):
         """
         self.dao_instance = OrderDao()
         super().__init__(dao=self.dao_instance)
+
         self.order_product_dao = OrderProductDao()
 
-    def create_order(self, db_session, order_data, order_items):
+    def create_order(self, db_session, order_data: OrderModel, order_items: List[OrderProductModel]):
         """创建订单及订单项"""
-        # 创建订单
-        order = self.dao_instance.add(db_session, order_data)
+        # 创建订单信息
+        order_data.create_time = datetime.now()
+        order = self.dao_instance.add(db_session, order_data.to_dict())
 
-        # 创建订单项
+        # 创建订单商品信息
         for item in order_items:
             item.order_id = order.id
-            self.order_product_dao.add(db_session, item)
+            self.order_product_dao.add(db_session, item.to_dict())
 
         return order
 

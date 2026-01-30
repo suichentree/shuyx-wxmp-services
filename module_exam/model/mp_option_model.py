@@ -1,11 +1,11 @@
 # 导入sqlalchemy框架中的相关字段
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime, CHAR, func, Index
+from sqlalchemy import Integer, String, DateTime, func, Index
 from sqlalchemy.orm import Mapped, MappedColumn
 
 # 导入公共基类
-from module_exam.model.base_model import myBaseModel
+from base.base_model import myBaseModel
 
 class MpOptionModel(myBaseModel):
     """

@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from module_exam.model.mp_option_model import MpOptionModel
 from module_exam.model.mp_question_model import MpQuestionModel
-from module_exam.dao.base_dao import BaseDao
+from base.base_dao import BaseDao
 
 # 继承BaseDao类，专注于数据访问操作, 可添加自定义方法
 class MpQuestionDao(BaseDao[MpQuestionModel]):

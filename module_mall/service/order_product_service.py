@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
 
-from module_exam.dao.order_product_dao import OrderProductDao
-from module_exam.model.order_product_model import OrderProductModel
-from module_exam.service.base_service import BaseService
+from module_mall.dao.order_product_dao import OrderProductDao
+from module_mall.model.order_product_model import OrderProductModel
+from base.base_service import BaseService
+
+
 
 # 继承Service类，专注于业务操作, 可添加自定义方法
 class OrderProductService(BaseService[OrderProductModel]):

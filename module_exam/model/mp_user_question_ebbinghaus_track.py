@@ -1,12 +1,11 @@
 # 导入sqlalchemy框架中的相关字段
 from datetime import datetime,date
-from typing import List
 
-from sqlalchemy import Column, Integer, String, DateTime, CHAR, func, Index, JSON
+from sqlalchemy import Integer, DateTime, func, Index
 from sqlalchemy.orm import Mapped, MappedColumn
 
 # 导入公共基类
-from module_exam.model.base_model import myBaseModel
+from base.base_model import myBaseModel
 
 class MpUserQuestionEbbinghausTrackModel(myBaseModel):
     """

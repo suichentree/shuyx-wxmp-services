@@ -19,8 +19,7 @@ MCH_ID: str = "your_mch_id"
 # 微信支付API密钥
 API_KEY: str = "your_api_key"
 
-
-def get_wx_openid_by_code(code: str):
+async def get_wx_openid_by_code(code: str):
     """
     调用微信小程序登录接口,通过微信小程序登录凭证（code）获取微信用户OpenID
     """
@@ -31,8 +30,6 @@ def get_wx_openid_by_code(code: str):
     response_info = json.loads(response.text)
     return response_info
 
-
-@router.post("/getOpenIdByWxCode")
 async def getOpenIdByWxCode(code: str = Body(None, embed=True)):
     """
     调用微信小程序登录接口,通过微信小程序登录凭证（code）获取微信用户OpenID
@@ -46,7 +43,6 @@ async def getOpenIdByWxCode(code: str = Body(None, embed=True)):
     return ResponseUtil.success(data=response_info)
 
 
-@router.get("/getAccessToken")
 async def getAccessToken():
     """
     调用微信小程序登录接口,获取访问令牌（access_token）

@@ -2,11 +2,11 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Integer, String, DateTime, func, Index, DECIMAL, Boolean, ForeignKey
+from sqlalchemy import Integer, String, DateTime, func, Index, DECIMAL, ForeignKey
 from sqlalchemy.orm import Mapped, MappedColumn
 
 # 导入公共基类
-from module_exam.model.base_model import myBaseModel
+from base.base_model import myBaseModel
 
 # 订单表
 class OrderModel(myBaseModel):

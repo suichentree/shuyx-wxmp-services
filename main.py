@@ -33,8 +33,10 @@ app.add_middleware(
 )
 
 # 注册所有路由
-from module_exam.controller import api_router
-app.include_router(api_router)
+from module_exam.controller import api_router as exam_api_router
+app.include_router(exam_api_router)
+from module_mall.controller import api_router as mall_api_router
+app.include_router(mall_api_router)
 
 # 测试运行接口
 @app.get("/")

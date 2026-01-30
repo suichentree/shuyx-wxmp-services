@@ -1,9 +1,8 @@
 from typing import List
 from decimal import Decimal
-
-from module_exam.dao.product_dao import ProductDao
-from module_exam.model.product_model import ProductModel
-from module_exam.service.base_service import BaseService
+from module_mall.dao.product_dao import ProductDao
+from module_mall.model.product_model import ProductModel
+from base.base_service import BaseService
 
 class ProductService(BaseService[ProductModel]):
     def __init__(self):

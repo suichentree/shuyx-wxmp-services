@@ -1,6 +1,6 @@
 from typing import List
 
-from module_exam.dao.base_dao import BaseDao
+from base.base_dao import BaseDao
 from module_exam.model.mp_user_question_ebbinghaus_track import MpUserQuestionEbbinghausTrackModel
 
 

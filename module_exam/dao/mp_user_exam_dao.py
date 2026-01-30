@@ -1,7 +1,9 @@
 from sqlalchemy import desc
 
 from module_exam.model.mp_user_exam_model import MpUserExamModel
-from module_exam.dao.base_dao import BaseDao
+from base.base_dao import BaseDao
+
+
 
 # 继承BaseDao类，专注于数据访问操作, 可添加自定义方法
 class MpUserExamDao(BaseDao[MpUserExamModel]):
