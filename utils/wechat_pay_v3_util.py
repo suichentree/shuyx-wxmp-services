@@ -12,11 +12,11 @@ from config.log_config import logger
 WECHAT_PAY_CONFIG = {
     # appid公众账号ID。是微信开放平台(移动应用)或微信公众平台(小程序、公众号)为开发者的应用程序提供的唯一标识。
     # 可以填写这三种类型中的任意一种APPID，但请确保该appid与mchid有绑定关系。
-    'appid': 'wxf8a159d29ef63e5a',
+    'appid': 'XXXX',
     # 商户号。是微信支付系统生成并分配给每个商户的唯一标识符。
-    'mch_id': '1422735102',
-    'api_key': 'a6996e73902564cf314c8362cf9f4412',  # API密钥
-    'serial_no': '66EF99FF2A6B6B1A285EEFC9A8A3929E38696DBC',  # 商户API证书序列号serial_no,注意是商户API证书而不是平台证书.
+    'mch_id': 'XXX',
+    'api_key': 'XXX',  # API密钥
+    'serial_no': 'XXX',  # 商户API证书序列号serial_no,注意是商户API证书而不是平台证书.
     'private_key_path': 'path/to/apiclient_key.pem',  # 商户私钥路径
 
     # 商户接收支付成功回调通知的地址
