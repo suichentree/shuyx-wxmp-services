@@ -15,7 +15,7 @@ WECHAT_PAY_CONFIG = {
     'appid': 'wxf8a159d29ef63e5a',
     # 商户号。是微信支付系统生成并分配给每个商户的唯一标识符。
     'mch_id': '1422735102',
-    'api_key': 'your_api_key',  # API密钥
+    'api_key': 'a6996e73902564cf314c8362cf9f4412',  # API密钥
     'serial_no': '66EF99FF2A6B6B1A285EEFC9A8A3929E38696DBC',  # 商户API证书序列号serial_no,注意是商户API证书而不是平台证书.
     'private_key_path': 'path/to/apiclient_key.pem',  # 商户私钥路径
 
