@@ -19,43 +19,6 @@ MCH_ID: str = "your_mch_id"
 # 微信支付API密钥
 API_KEY: str = "your_api_key"
 
-async def get_wx_openid_by_code(code: str):
-    """
-    调用微信小程序登录接口,通过微信小程序登录凭证（code）获取微信用户OpenID
-    """
-    url = f"https://api.weixin.qq.com/sns/jscode2session?appid={APP_ID}&secret={APP_SECRET}&js_code={code}&grant_type=authorization_code"
-    # 发送GET请求，调用接口
-    response = requests.get(url)
-    # 获取响应结果
-    response_info = json.loads(response.text)
-    return response_info
-
-async def getOpenIdByWxCode(code: str = Body(None, embed=True)):
-    """
-    调用微信小程序登录接口,通过微信小程序登录凭证（code）获取微信用户OpenID
-    """
-    logger.info(f"/mp/wxservice/getOpenIdByWxCode , code = {code}")
-    if not code:
-        return ResponseUtil.error(message="微信小程序登录凭证（code）不能为空")
-
-    # 获取openid
-    response_info = get_wx_openid_by_code(code)
-    return ResponseUtil.success(data=response_info)
-
-
-async def getAccessToken():
-    """
-    调用微信小程序登录接口,获取访问令牌（access_token）
-    """
-    logger.info(f"调用微信小程序登录接口,获取访问令牌（access_token） /mp/wxservice/getAccessToken")
-    url = f"https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={APP_ID}&secret={APP_SECRET}"
-    # 发送GET请求，调用接口
-    response = requests.get(url)
-    # 获取响应结果
-    response_info = json.loads(response.text)
-    return ResponseUtil.success(data=response_info)
-
-
 def generate_sign(params: dict, key: str):
     """生成微信支付签名"""
     # 按参数名ASCII码从小到大排序
